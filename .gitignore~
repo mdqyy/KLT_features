@@ -1,0 +1,4 @@
+.fuse*
+klt_feature
+*.o
+moc_*

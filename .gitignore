@@ -1,0 +1,6 @@
+.fuse*
+klt_feature
+*.o
+moc_*
+*.mp4
+*.jpg
