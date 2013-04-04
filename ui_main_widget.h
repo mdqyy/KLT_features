@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'main_widget.ui'
 **
-** Created: Thu Feb 28 16:41:14 2013
+** Created: Thu Apr 4 11:56:31 2013
 **      by: Qt User Interface Compiler version 4.8.1
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
@@ -18,7 +18,6 @@
 #include <QtGui/QHeaderView>
 #include <QtGui/QLabel>
 #include <QtGui/QPushButton>
-#include <QtGui/QSpacerItem>
 #include <QtGui/QVBoxLayout>
 #include <QtGui/QWidget>
 
@@ -30,8 +29,6 @@ public:
     QHBoxLayout *horizontalLayout;
     QVBoxLayout *verticalLayout_2;
     QLabel *m_main_label;
-    QSpacerItem *horizontalSpacer_2;
-    QSpacerItem *verticalSpacer;
     QLabel *m_main_label_2;
     QVBoxLayout *verticalLayout;
     QPushButton *m_button_start;
@@ -43,7 +40,7 @@ public:
             MainWidget->setObjectName(QString::fromUtf8("MainWidget"));
         MainWidget->resize(720, 837);
         MainWidget->setMinimumSize(QSize(720, 720));
-        MainWidget->setMaximumSize(QSize(1200, 1200));
+        MainWidget->setMaximumSize(QSize(9999, 9999));
         QIcon icon;
         icon.addFile(QString::fromUtf8(":/icon/lena.ico"), QSize(), QIcon::Normal, QIcon::On);
         icon.addFile(QString::fromUtf8(":/icon/lena.ico"), QSize(), QIcon::Selected, QIcon::Off);
@@ -54,7 +51,7 @@ public:
         verticalLayout_2->setObjectName(QString::fromUtf8("verticalLayout_2"));
         m_main_label = new QLabel(MainWidget);
         m_main_label->setObjectName(QString::fromUtf8("m_main_label"));
-        QSizePolicy sizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+        QSizePolicy sizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         sizePolicy.setHorizontalStretch(0);
         sizePolicy.setVerticalStretch(0);
         sizePolicy.setHeightForWidth(m_main_label->sizePolicy().hasHeightForWidth());
@@ -68,14 +65,6 @@ public:
         m_main_label->setMidLineWidth(0);
 
         verticalLayout_2->addWidget(m_main_label);
-
-        horizontalSpacer_2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
-
-        verticalLayout_2->addItem(horizontalSpacer_2);
-
-        verticalSpacer = new QSpacerItem(20, 40, QSizePolicy::Minimum, QSizePolicy::Expanding);
-
-        verticalLayout_2->addItem(verticalSpacer);
 
         m_main_label_2 = new QLabel(MainWidget);
         m_main_label_2->setObjectName(QString::fromUtf8("m_main_label_2"));
@@ -96,6 +85,7 @@ public:
 
         verticalLayout = new QVBoxLayout();
         verticalLayout->setObjectName(QString::fromUtf8("verticalLayout"));
+        verticalLayout->setSizeConstraint(QLayout::SetDefaultConstraint);
         m_button_start = new QPushButton(MainWidget);
         m_button_start->setObjectName(QString::fromUtf8("m_button_start"));
 

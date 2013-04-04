@@ -4,6 +4,8 @@
 #include <QtGui>
 #include <opencv2/opencv.hpp>
 #include <vector>
+#include "my_algorithm.h"
+
 
 using std::vector;
 
@@ -23,22 +25,19 @@ public:
 
 
     void showVideo(cv::VideoCapture& video);
-    void loadImage(QString s);
     void loadVideo(QString s);
+    void loadVideo(int s=0);
     void keyPressEvent(QKeyEvent *);
     void processVideo(cv::VideoCapture& video);
-    vector < cv::Point2f > get_KLT_features(cv::Mat image, int maxCorners);
 
 private slots:
     void processImage();
 private:
     Ui::MainWidget *ui;
-    cv::Mat m_current_frame;
-    cv::Mat m_current_frame_gray;
-    cv::Mat m_prev_frame;
-    cv::Mat m_prev_frame_gray;
+
     cv::Mat m_show_frame;
     cv::VideoCapture m_video;
+    KLTDetector m_klt_detector;
     int m_cycle;
 };
 

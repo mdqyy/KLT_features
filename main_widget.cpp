@@ -4,40 +4,38 @@
 using namespace cv;
 using std::cout;
 using std::endl;
-namespace
-{
-RNG rng(12345);
-static const float resize_scale = 0.5;
-static const int features_num = 500;
-}
+
 
 MainWidget::MainWidget(QWidget *parent) :
     QWidget(parent),ui(new Ui::MainWidget),m_cycle(-1)
 {
     ui->setupUi(this);
-    loadImage("lena.jpg");
     loadVideo("test.mp4");
-    //    connect(ui->m_button_start,SIGNAL(clicked()),this,SLOT(processImage()));
 }
 
 MainWidget::~MainWidget()
 {
     delete ui;
 }
-void MainWidget::loadImage(QString s)
-{
-    //    m_image = imread(s.toStdString());
-    //    showImage(m_image);
-}
 void MainWidget::loadVideo(QString s)
 {
-//    m_video.open(1);
     m_video.open(s.toStdString());
     if(!m_video.isOpened())
     {
         std::cout<<"Error in video input !!"<<std::endl;
     }
-    processVideo(m_video);
+    m_klt_detector.setVideo(&m_video);
+    m_klt_detector.initProcess();
+}
+void MainWidget::loadVideo(int s)
+{
+    m_video.open(s);
+    if(!m_video.isOpened())
+    {
+        std::cout<<"Error in video input !!"<<std::endl;
+    }
+    m_klt_detector.setVideo(&m_video);
+    m_klt_detector.initProcess();
 }
 void MainWidget::keyPressEvent(QKeyEvent *key)
 {
@@ -52,113 +50,13 @@ void MainWidget::keyPressEvent(QKeyEvent *key)
 }
 void MainWidget::processVideo(VideoCapture& video)
 {
-    m_cycle++;
-    if(!m_cycle)
-    {
-        if( video.read(m_prev_frame) && video.read(m_current_frame))
-        {
-
-            cout<<"Video Process Start !!!"<<endl;
-            cv::resize(m_prev_frame,m_prev_frame,Size(),resize_scale,resize_scale);
-            cv::resize(m_current_frame,m_current_frame,Size(),resize_scale,resize_scale);
-            cvtColor(m_current_frame,m_current_frame_gray,CV_BGR2GRAY);
-
-
-        }
-        else
-        {
-            std::cout<<"Error in video show !!!"<<std::endl;
-        }
-    }
-    else
-    {
-        // get video pic
-        m_prev_frame = m_current_frame.clone();
-        if( !video.read(m_current_frame)||!video.read(m_current_frame))
-        {
-
-            std::cout<<"Error in video show !!!"<<std::endl;
-            return;
-        }
-        cv::resize(m_current_frame,m_current_frame,Size(),resize_scale,resize_scale);
-
-
-        // to gray scale
-        swap(m_prev_frame_gray,m_current_frame_gray);
-        cvtColor(m_current_frame,m_current_frame_gray,CV_BGR2GRAY);
-
-        // get features points
-        vector<Point2f> points1 = get_KLT_features(m_prev_frame_gray,features_num);
-
-        // get motion line
-        vector<Point2f> points2 = points1;
-        vector<unsigned char> features_status;
-        vector<float> features_error;
-        calcOpticalFlowPyrLK(m_prev_frame, m_current_frame,
-                             points1, points2, features_status, features_error,
-                             Size(21,21), 5,
-                             TermCriteria(TermCriteria::COUNT+TermCriteria::EPS, 30, 0.01),
-                             OPTFLOW_LK_GET_MIN_EIGENVALS,1e-4);
-        for( size_t i=0;i<points1.size();i++)
-        {
-            if( !features_status[i] || features_error[i]>550 )
-            {
-                continue;
-            }
-            line(m_prev_frame,points1[i],points2[i],Scalar(255,255,255),1,8,0);
-        }
-        showImage(m_current_frame,ui->m_main_label);
-        showImage(m_prev_frame,ui->m_main_label_2);
-    }
+    m_klt_detector.processNextFrame();
+    cv::Mat temp;
+    showImage(m_klt_detector.getCurFrame(),ui->m_main_label);
+    showImage(m_klt_detector.getPreFrame(),ui->m_main_label_2);
+    this->update();
 }
-vector<Point2f> MainWidget::get_KLT_features(Mat image,int maxCorners)
-{
-    Mat temp;
-    if(image.channels()==3)
-    {
-        cvtColor(image,temp,CV_BGR2GRAY);
-    }
-    else
-    {
-        temp=image.clone();
-    }
 
-
-    /// Parameters for Shi-Tomasi algorithm
-    vector<Point2f> corners;
-    double qualityLevel = 0.01;
-    double minDistance = 10;
-    int blockSize = 3;
-    bool useHarrisDetector = false;
-    double k = 0.04;
-
-    /// Apply corner detection
-    goodFeaturesToTrack( temp,
-                         corners,
-                         maxCorners,
-                         qualityLevel,
-                         minDistance,
-                         Mat(),
-                         blockSize,
-                         useHarrisDetector,
-                         k );
-
-
-    /// find corner sub-pixel
-    cornerSubPix(temp, corners, Size(blockSize,blockSize), Size(-1,-1),
-                 TermCriteria(TermCriteria::COUNT + TermCriteria::EPS,20,0.03));
-
-
-    /// Draw corners detected
-    std::cout<<"** Number of corners detected: "<<corners.size()<<std::endl;
-//    int r = 4;
-//    for( int i = 0; i < corners.size(); i++ )
-//    { circle( image, corners[i], r, Scalar(rng.uniform(0,255), rng.uniform(0,255),
-//                                           rng.uniform(0,255)), -1, 8, 0 ); }
-
-
-    return corners;
-}
 
 void MainWidget::processImage()
 {
@@ -226,7 +124,6 @@ void MainWidget::showImage(Mat image)
     QPixmap temp;
     temp.convertFromImage(img);
     ui->m_main_label->setPixmap(temp);
-    this->update();
 }
 void MainWidget::showImage(Mat image, QLabel *label)
 {
@@ -248,5 +145,4 @@ void MainWidget::showImage(Mat image, QLabel *label)
     QPixmap temp;
     temp.convertFromImage(img);
     label->setPixmap(temp);
-    this->update();
 }

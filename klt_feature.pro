@@ -4,7 +4,9 @@
 #
 #-------------------------------------------------
 
-QT       += core gui
+QT       += core gui\
+CONFIG += Debug\
+
 
 TARGET = klt_feature
 
@@ -12,9 +14,11 @@ TEMPLATE = app
 
 
 SOURCES += main.cpp\
-        main_widget.cpp
+        main_widget.cpp \
+    my_algorithm.cpp
 
-HEADERS  += main_widget.h
+HEADERS  += main_widget.h \
+    my_algorithm.h
 
 FORMS    += main_widget.ui
 
