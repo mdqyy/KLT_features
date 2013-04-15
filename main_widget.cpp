@@ -52,7 +52,8 @@ void MainWidget::processVideo(VideoCapture& video)
 {
     m_klt_detector.processNextFrame();
     cv::Mat temp;
-    showImage(m_klt_detector.getCurFrame(),ui->m_main_label);
+//    showImage(m_klt_detector.getCurFrame(),ui->m_main_label);
+    showImage(m_klt_detector.getDeltaFrame(),ui->m_main_label);
     showImage(m_klt_detector.getPreFrame(),ui->m_main_label_2);
     this->update();
 }
