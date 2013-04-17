@@ -1,6 +1,6 @@
 #ifndef MAIN_WIDGET_H
 #define MAIN_WIDGET_H
-
+#include <QtWidgets>
 #include <QtGui>
 #include <opencv2/opencv.hpp>
 #include <vector>

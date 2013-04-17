@@ -4,3 +4,7 @@ klt_feature
 moc_*
 *.mp4
 *.jpg
+*.mpg
+*.avi
+debug/
+release/

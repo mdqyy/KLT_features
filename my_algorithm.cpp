@@ -7,9 +7,13 @@ using std::endl;
 namespace
 {
 RNG rng(12345);
+static const bool c_down_twice = false;
+static const int gauss_kernel_size = 43;
+static const float gauss_sigma = 100;
+
 static const cv::Size frame_size = cv::Size(320,180);
 //static const cv::Size frame_size = cv::Size(0,0);
-static const float resize_scale = 1.0/4;
+static const float resize_scale = 1.0/2;
 static const int feature_points_num = 500;
 static const int features_num = 4;
 }
@@ -33,8 +37,13 @@ void KLTDetector::initProcess()
     {
 
         cout<<"Video Process Start !!!"<<endl;
-        cv::resize(m_current_frame,m_current_frame,frame_size,resize_scale,resize_scale,INTER_LINEAR);
-        //        cv::resize(m_current_frame,m_current_frame,Size(1280,720));
+        GaussianBlur(m_current_frame,m_current_frame,Size(gauss_kernel_size,gauss_kernel_size),gauss_sigma);
+        cv::resize(m_current_frame,m_current_frame,frame_size,resize_scale,resize_scale,INTER_LINEAR );
+        if(c_down_twice)
+        {
+            GaussianBlur(m_current_frame,m_current_frame,Size(gauss_kernel_size,gauss_kernel_size),10);
+            cv::resize(m_current_frame,m_current_frame,frame_size,resize_scale,resize_scale,INTER_LINEAR );
+        }
         cvtColor(m_current_frame,m_current_frame_gray,CV_BGR2GRAY);
     }
     else
@@ -56,8 +65,13 @@ void KLTDetector::processNextFrame()
         std::cout<<"Error in video show !!!"<<std::endl;
         return;
     }
-    cv::resize(m_current_frame,m_current_frame,frame_size,resize_scale,resize_scale,INTER_LINEAR);
-    //    cv::resize(m_current_frame,m_current_frame,Size(1280,720));
+    GaussianBlur(m_current_frame,m_current_frame,Size(gauss_kernel_size,gauss_kernel_size),gauss_sigma);
+    cv::resize(m_current_frame,m_current_frame,frame_size,resize_scale,resize_scale,INTER_LINEAR );
+    if(c_down_twice)
+    {
+        GaussianBlur(m_current_frame,m_current_frame,Size(gauss_kernel_size,gauss_kernel_size),10);
+        cv::resize(m_current_frame,m_current_frame,frame_size,resize_scale,resize_scale,INTER_LINEAR );
+    }
 
     // to gray scale
     swap(m_prev_frame_gray,m_current_frame_gray);
@@ -133,8 +147,8 @@ void KLTDetector::processNextFrame()
             if(a[0]==0||a[0]==m_delta_frame.cols-1
                     ||a[1]==0||a[1]==m_delta_frame.rows-1)
             {
-                                m_delta_frame.at<uchar>(i,j)=0 ;
-//                m_delta_frame.at<Vec3b>(i,j)=Vec3b(0,0,0) ;
+                m_delta_frame.at<uchar>(i,j)=0 ;
+                //                m_delta_frame.at<Vec3b>(i,j)=Vec3b(0,0,0) ;
             }
             else
             {
@@ -147,7 +161,7 @@ void KLTDetector::processNextFrame()
                     dd[k]=(p1[k]>p2[k])?(p1[k]-p2[k]):(p2[k]-p1[k]);
                     hehe+=dd[k];
                 }
-//                m_delta_frame.at<Vec3b>(i,j)=dd;
+                //                m_delta_frame.at<Vec3b>(i,j)=dd;
                 m_delta_frame.at<uchar>(i,j)=hehe/3;
             }
         }
@@ -242,7 +256,7 @@ void LinearTransformManager::solveTransform()
     m_transform_mat = result.t();// k*m
 
 
-
+    // calc for the second time
     Mat newinput,newoutput;
     Mat outt=m_output_vec.t();
     Mat checkoutput = m_transform_mat*m_input_vec.t();
@@ -250,16 +264,21 @@ void LinearTransformManager::solveTransform()
     int si = m_input_vec.rows;
     for(int k=0;k<si;k++)
     {
-        if(checkoutput.col(k).dot(checkoutput.col(k))<4)
+        if(checkoutput.col(k).dot(checkoutput.col(k))<2)
         {
             newinput.push_back(m_input_vec.row(k));
             newoutput.push_back(outt.row(k));
         }
     }
+
+    cout<<"After selection: "<<newinput.rows<<endl;
+    if(!newinput.rows)
+    {
+        return;
+    }
     m_input_vec = newinput;
     m_output_vec = newoutput.t();
 
-    cout<<"After selection: "<<m_input_vec.rows<<endl;
     result = (m_input_vec.t()*m_input_vec).inv(DECOMP_CHOLESKY)*m_input_vec.t()*m_output_vec.t(); //m * k
     m_transform_mat = result.t();// k*m
 

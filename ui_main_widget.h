@@ -1,8 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'main_widget.ui'
 **
-** Created: Mon Apr 15 10:31:07 2013
-**      by: Qt User Interface Compiler version 4.8.1
+** Created by: Qt User Interface Compiler version 5.0.2
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
 ********************************************************************************/
@@ -11,15 +10,15 @@
 #define UI_MAIN_WIDGET_H
 
 #include <QtCore/QVariant>
-#include <QtGui/QAction>
-#include <QtGui/QApplication>
-#include <QtGui/QButtonGroup>
-#include <QtGui/QHBoxLayout>
-#include <QtGui/QHeaderView>
-#include <QtGui/QLabel>
-#include <QtGui/QPushButton>
-#include <QtGui/QVBoxLayout>
-#include <QtGui/QWidget>
+#include <QtWidgets/QAction>
+#include <QtWidgets/QApplication>
+#include <QtWidgets/QButtonGroup>
+#include <QtWidgets/QHBoxLayout>
+#include <QtWidgets/QHeaderView>
+#include <QtWidgets/QLabel>
+#include <QtWidgets/QPushButton>
+#include <QtWidgets/QVBoxLayout>
+#include <QtWidgets/QWidget>
 
 QT_BEGIN_NAMESPACE
 
@@ -37,20 +36,20 @@ public:
     void setupUi(QWidget *MainWidget)
     {
         if (MainWidget->objectName().isEmpty())
-            MainWidget->setObjectName(QString::fromUtf8("MainWidget"));
+            MainWidget->setObjectName(QStringLiteral("MainWidget"));
         MainWidget->resize(720, 837);
-        MainWidget->setMinimumSize(QSize(720, 720));
+        MainWidget->setMinimumSize(QSize(600, 600));
         MainWidget->setMaximumSize(QSize(9999, 9999));
         QIcon icon;
-        icon.addFile(QString::fromUtf8(":/icon/lena.ico"), QSize(), QIcon::Normal, QIcon::On);
-        icon.addFile(QString::fromUtf8(":/icon/lena.ico"), QSize(), QIcon::Selected, QIcon::Off);
+        icon.addFile(QStringLiteral(":/icon/lena.ico"), QSize(), QIcon::Normal, QIcon::On);
+        icon.addFile(QStringLiteral(":/icon/lena.ico"), QSize(), QIcon::Selected, QIcon::Off);
         MainWidget->setWindowIcon(icon);
         horizontalLayout = new QHBoxLayout(MainWidget);
-        horizontalLayout->setObjectName(QString::fromUtf8("horizontalLayout"));
+        horizontalLayout->setObjectName(QStringLiteral("horizontalLayout"));
         verticalLayout_2 = new QVBoxLayout();
-        verticalLayout_2->setObjectName(QString::fromUtf8("verticalLayout_2"));
+        verticalLayout_2->setObjectName(QStringLiteral("verticalLayout_2"));
         m_main_label = new QLabel(MainWidget);
-        m_main_label->setObjectName(QString::fromUtf8("m_main_label"));
+        m_main_label->setObjectName(QStringLiteral("m_main_label"));
         QSizePolicy sizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         sizePolicy.setHorizontalStretch(0);
         sizePolicy.setVerticalStretch(0);
@@ -67,7 +66,7 @@ public:
         verticalLayout_2->addWidget(m_main_label);
 
         m_main_label_2 = new QLabel(MainWidget);
-        m_main_label_2->setObjectName(QString::fromUtf8("m_main_label_2"));
+        m_main_label_2->setObjectName(QStringLiteral("m_main_label_2"));
         sizePolicy.setHeightForWidth(m_main_label_2->sizePolicy().hasHeightForWidth());
         m_main_label_2->setSizePolicy(sizePolicy);
         m_main_label_2->setMinimumSize(QSize(400, 300));
@@ -84,15 +83,15 @@ public:
         horizontalLayout->addLayout(verticalLayout_2);
 
         verticalLayout = new QVBoxLayout();
-        verticalLayout->setObjectName(QString::fromUtf8("verticalLayout"));
+        verticalLayout->setObjectName(QStringLiteral("verticalLayout"));
         verticalLayout->setSizeConstraint(QLayout::SetDefaultConstraint);
         m_button_start = new QPushButton(MainWidget);
-        m_button_start->setObjectName(QString::fromUtf8("m_button_start"));
+        m_button_start->setObjectName(QStringLiteral("m_button_start"));
 
         verticalLayout->addWidget(m_button_start);
 
         m_button_open = new QPushButton(MainWidget);
-        m_button_open->setObjectName(QString::fromUtf8("m_button_open"));
+        m_button_open->setObjectName(QStringLiteral("m_button_open"));
 
         verticalLayout->addWidget(m_button_open);
 
@@ -107,11 +106,11 @@ public:
 
     void retranslateUi(QWidget *MainWidget)
     {
-        MainWidget->setWindowTitle(QApplication::translate("MainWidget", "Form", 0, QApplication::UnicodeUTF8));
-        m_main_label->setText(QApplication::translate("MainWidget", "Hello World!", 0, QApplication::UnicodeUTF8));
-        m_main_label_2->setText(QApplication::translate("MainWidget", "Hello World!", 0, QApplication::UnicodeUTF8));
-        m_button_start->setText(QApplication::translate("MainWidget", "Start", 0, QApplication::UnicodeUTF8));
-        m_button_open->setText(QApplication::translate("MainWidget", "Open", 0, QApplication::UnicodeUTF8));
+        MainWidget->setWindowTitle(QApplication::translate("MainWidget", "Form", 0));
+        m_main_label->setText(QApplication::translate("MainWidget", "Hello World!", 0));
+        m_main_label_2->setText(QApplication::translate("MainWidget", "Hello World!", 0));
+        m_button_start->setText(QApplication::translate("MainWidget", "Start", 0));
+        m_button_open->setText(QApplication::translate("MainWidget", "Open", 0));
     } // retranslateUi
 
 };
