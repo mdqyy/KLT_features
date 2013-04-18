@@ -1,10 +1,12 @@
 .fuse*
 klt_feature
+klt_feature.pro.*
 *.o
 moc_*
 *.mp4
 *.jpg
 *.mpg
 *.avi
+ui_*.h
 debug/
 release/

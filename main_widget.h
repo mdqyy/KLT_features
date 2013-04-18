@@ -1,6 +1,15 @@
 #ifndef MAIN_WIDGET_H
 #define MAIN_WIDGET_H
+
+#ifdef _WIN32 || _WIN64
+// Windows Includes Here
 #include <QtWidgets>
+#endif
+
+#ifdef __linux__
+  // Linux Includes Here
+#endif
+
 #include <QtGui>
 #include <opencv2/opencv.hpp>
 #include <vector>

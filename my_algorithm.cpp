@@ -8,11 +8,11 @@ namespace
 {
 RNG rng(12345);
 static const bool c_down_twice = false;
-static const int gauss_kernel_size = 43;
-static const float gauss_sigma = 100;
+static const int gauss_kernel_size = 7;
+static const float gauss_sigma = 0;
 
-static const cv::Size frame_size = cv::Size(320,180);
-//static const cv::Size frame_size = cv::Size(0,0);
+//static const cv::Size frame_size = cv::Size(320,180);
+static const cv::Size frame_size = cv::Size(0,0);
 static const float resize_scale = 1.0/2;
 static const int feature_points_num = 500;
 static const int features_num = 4;

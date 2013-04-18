@@ -2,3 +2,10 @@
 klt_feature
 *.o
 moc_*
+*.mp4
+*.jpg
+*.mpg
+*.avi
+ui_*.h
+debug/
+release/
