@@ -7,11 +7,14 @@ using std::endl;
 namespace
 {
 RNG rng(12345);
-static const bool c_down_twice = false;
-static const int gauss_kernel_size = 7;
-static const float gauss_sigma = 0;
+static const bool c_use_prydown = false;
+static const bool c_down_twice = true;
+static const bool c_display_chromatic_delta = true;
 
-//static const cv::Size frame_size = cv::Size(320,180);
+static const int gauss_kernel_size = 7;
+static const float gauss_sigma = 7;
+
+//static const cv::Size frame_size = cv::Size(640,360);
 static const cv::Size frame_size = cv::Size(0,0);
 static const float resize_scale = 1.0/2;
 static const int feature_points_num = 500;
@@ -37,12 +40,23 @@ void KLTDetector::initProcess()
     {
 
         cout<<"Video Process Start !!!"<<endl;
-        GaussianBlur(m_current_frame,m_current_frame,Size(gauss_kernel_size,gauss_kernel_size),gauss_sigma);
-        cv::resize(m_current_frame,m_current_frame,frame_size,resize_scale,resize_scale,INTER_LINEAR );
-        if(c_down_twice)
+        if(c_use_prydown)
         {
-            GaussianBlur(m_current_frame,m_current_frame,Size(gauss_kernel_size,gauss_kernel_size),10);
+            pyrDown(m_current_frame,m_current_frame,Size(m_current_frame.cols/2,m_current_frame.rows/2));
+            if(c_down_twice)
+            {
+                pyrDown(m_current_frame,m_current_frame,Size(m_current_frame.cols/2,m_current_frame.rows/2));
+            }
+        }
+        else
+        {
+            GaussianBlur(m_current_frame,m_current_frame,Size(gauss_kernel_size,gauss_kernel_size),gauss_sigma);
             cv::resize(m_current_frame,m_current_frame,frame_size,resize_scale,resize_scale,INTER_LINEAR );
+            if(c_down_twice)
+            {
+                GaussianBlur(m_current_frame,m_current_frame,Size(gauss_kernel_size,gauss_kernel_size),10);
+                cv::resize(m_current_frame,m_current_frame,frame_size,resize_scale,resize_scale,INTER_LINEAR );
+            }
         }
         cvtColor(m_current_frame,m_current_frame_gray,CV_BGR2GRAY);
     }
@@ -65,14 +79,24 @@ void KLTDetector::processNextFrame()
         std::cout<<"Error in video show !!!"<<std::endl;
         return;
     }
-    GaussianBlur(m_current_frame,m_current_frame,Size(gauss_kernel_size,gauss_kernel_size),gauss_sigma);
-    cv::resize(m_current_frame,m_current_frame,frame_size,resize_scale,resize_scale,INTER_LINEAR );
-    if(c_down_twice)
+    if(c_use_prydown)
     {
-        GaussianBlur(m_current_frame,m_current_frame,Size(gauss_kernel_size,gauss_kernel_size),10);
-        cv::resize(m_current_frame,m_current_frame,frame_size,resize_scale,resize_scale,INTER_LINEAR );
+        pyrDown(m_current_frame,m_current_frame,Size(m_current_frame.cols/2,m_current_frame.rows/2));
+        if(c_down_twice)
+        {
+            pyrDown(m_current_frame,m_current_frame,Size(m_current_frame.cols/2,m_current_frame.rows/2));
+        }
     }
-
+    else
+    {
+        GaussianBlur(m_current_frame,m_current_frame,Size(gauss_kernel_size,gauss_kernel_size),gauss_sigma);
+        cv::resize(m_current_frame,m_current_frame,frame_size,resize_scale,resize_scale,INTER_LINEAR );
+        if(c_down_twice)
+        {
+            GaussianBlur(m_current_frame,m_current_frame,Size(gauss_kernel_size,gauss_kernel_size),10);
+            cv::resize(m_current_frame,m_current_frame,frame_size,resize_scale,resize_scale,INTER_LINEAR );
+        }
+    }
     // to gray scale
     swap(m_prev_frame_gray,m_current_frame_gray);
     cvtColor(m_current_frame,m_current_frame_gray,CV_BGR2GRAY);
@@ -83,15 +107,17 @@ void KLTDetector::processNextFrame()
     // get motion line
     std::vector<unsigned char> features_status;
     std::vector<float> features_error;
+    Size search_window(21,21);
+    int pyr_level = 6;
     calcOpticalFlowPyrLK(m_prev_frame, m_current_frame,
                          m_pre_klt_points, m_cur_klt_points, features_status, features_error,
-                         Size(5,5), 5,
+                         search_window, pyr_level,
                          TermCriteria(TermCriteria::COUNT+TermCriteria::EPS, 30, 0.01),
                          OPTFLOW_LK_GET_MIN_EIGENVALS,1e-4);
     std::vector<Point2f> prev_points,cur_points;
     for( size_t i=0;i<m_pre_klt_points.size();i++)
     {
-        if( !features_status[i] || features_error[i]>50 )
+        if( !features_status[i] || features_error[i]>30 )
         {
             continue;
         }
@@ -122,7 +148,14 @@ void KLTDetector::processNextFrame()
     ltmanager.solveTransform();
 
     // get delta frame
-    m_delta_frame = Mat(m_current_frame.rows,m_current_frame.cols,CV_8UC1);
+    if(c_display_chromatic_delta)
+    {
+        m_delta_frame = Mat(m_current_frame.rows,m_current_frame.cols,CV_8UC3);
+    }
+    else
+    {
+        m_delta_frame = Mat(m_current_frame.rows,m_current_frame.cols,CV_8UC1);
+    }
     Mat trans = ltmanager.getTransformMat();
     Mat output_p;
     int a[2];
@@ -147,8 +180,15 @@ void KLTDetector::processNextFrame()
             if(a[0]==0||a[0]==m_delta_frame.cols-1
                     ||a[1]==0||a[1]==m_delta_frame.rows-1)
             {
-                m_delta_frame.at<uchar>(i,j)=0 ;
-                //                m_delta_frame.at<Vec3b>(i,j)=Vec3b(0,0,0) ;
+                if(c_display_chromatic_delta)
+                {
+
+                    m_delta_frame.at<Vec3b>(i,j)=Vec3b(0,0,0) ;
+                }
+                else
+                {
+                    m_delta_frame.at<uchar>(i,j)=0 ;
+                }
             }
             else
             {
@@ -161,8 +201,15 @@ void KLTDetector::processNextFrame()
                     dd[k]=(p1[k]>p2[k])?(p1[k]-p2[k]):(p2[k]-p1[k]);
                     hehe+=dd[k];
                 }
-                //                m_delta_frame.at<Vec3b>(i,j)=dd;
-                m_delta_frame.at<uchar>(i,j)=hehe/3;
+                if(c_display_chromatic_delta)
+                {
+                    m_delta_frame.at<Vec3b>(i,j)=dd;
+                }
+                else
+                {
+                    m_delta_frame.at<uchar>(i,j)=hehe/3;
+                }
+
             }
         }
     }
@@ -174,27 +221,27 @@ void KLTDetector::processNextFrame()
 }
 std::vector<Point2f> KLTDetector::get_KLT_features(Mat image,int maxCorners)
 {
-    Mat temp;
+    Mat in_image;
     if(image.channels()==3)
     {
-        cvtColor(image,temp,CV_BGR2GRAY);
+        cvtColor(image,in_image,CV_BGR2GRAY);
     }
     else
     {
-        temp=image.clone();
+        in_image=image.clone();
     }
 
 
     // Parameters for Shi-Tomasi algorithm
     vector<Point2f> corners;
-    double qualityLevel = 0.01;
-    double minDistance = 10;
+    double qualityLevel = 0.05;
+    double minDistance = 5;
     int blockSize = 3;
     bool useHarrisDetector = false;
-    double k = 0.04;
+    double k = 0.01;
 
     // Apply corner detection
-    goodFeaturesToTrack( temp,
+    goodFeaturesToTrack( in_image,
                          corners,
                          maxCorners,
                          qualityLevel,
@@ -206,7 +253,7 @@ std::vector<Point2f> KLTDetector::get_KLT_features(Mat image,int maxCorners)
 
 
     // find corner sub-pixel
-    cornerSubPix(temp, corners, Size(blockSize,blockSize), Size(-1,-1),
+    cornerSubPix(in_image, corners, Size(blockSize,blockSize), Size(-1,-1),
                  TermCriteria(TermCriteria::COUNT + TermCriteria::EPS,20,0.03));
 
 
@@ -264,7 +311,7 @@ void LinearTransformManager::solveTransform()
     int si = m_input_vec.rows;
     for(int k=0;k<si;k++)
     {
-        if(checkoutput.col(k).dot(checkoutput.col(k))<2)
+        if(checkoutput.col(k).dot(checkoutput.col(k))<5)
         {
             newinput.push_back(m_input_vec.row(k));
             newoutput.push_back(outt.row(k));
