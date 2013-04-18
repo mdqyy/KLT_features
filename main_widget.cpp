@@ -11,7 +11,7 @@ MainWidget::MainWidget(QWidget *parent) :
 {
     ui->setupUi(this);
 //    loadVideo("test1.avi");
-        loadVideo("hehe.mp4");
+        loadVideo("test1.mp4");
 }
 
 MainWidget::~MainWidget()
@@ -25,8 +25,8 @@ void MainWidget::loadVideo(QString s)
     {
         std::cout<<"Error in video input !!"<<std::endl;
     }
-    m_klt_detector.setVideo(&m_video);
-    m_klt_detector.initProcess();
+    m_algorithm.setVideo(&m_video);
+    m_algorithm.initProcess();
 }
 void MainWidget::loadVideo(int s)
 {
@@ -35,8 +35,8 @@ void MainWidget::loadVideo(int s)
     {
         std::cout<<"Error in video input !!"<<std::endl;
     }
-    m_klt_detector.setVideo(&m_video);
-    m_klt_detector.initProcess();
+    m_algorithm.setVideo(&m_video);
+    m_algorithm.initProcess();
 }
 void MainWidget::keyPressEvent(QKeyEvent *key)
 {
@@ -51,11 +51,10 @@ void MainWidget::keyPressEvent(QKeyEvent *key)
 }
 void MainWidget::processVideo(VideoCapture& video)
 {
-    m_klt_detector.processNextFrame();
-    cv::Mat temp;
+    m_algorithm.processNextFrame();
 //    showImage(m_klt_detector.getCurFrame(),ui->m_main_label);
-    showImage(m_klt_detector.getDeltaFrame(),ui->m_main_label);
-    showImage(m_klt_detector.getPreFrame(),ui->m_main_label_2);
+    showImage(m_algorithm.getDeltaFrame(),ui->m_main_label);
+    showImage(m_algorithm.getPreFrame(),ui->m_main_label_2);
     this->update();
 }
 

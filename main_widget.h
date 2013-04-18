@@ -46,7 +46,7 @@ private:
 
     cv::Mat m_show_frame;
     cv::VideoCapture m_video;
-    KLTDetector m_klt_detector;
+    MyAlgorithm m_algorithm;
     int m_cycle;
 };
 
