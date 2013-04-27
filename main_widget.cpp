@@ -11,7 +11,7 @@ MainWidget::MainWidget(QWidget *parent) :
 {
     ui->setupUi(this);
 //    loadVideo("test1.avi");
-        loadVideo("test1.mp4");
+        loadVideo("test.mp4");
 }
 
 MainWidget::~MainWidget()

@@ -10,7 +10,7 @@ namespace
 RNG rng(12345);
 static const bool c_use_prydown = false;
 static const bool c_down_twice = true;
-static const bool c_display_chromatic_delta = true;
+static const bool c_display_chromatic_delta = false;
 
 static const int gauss_kernel_size = 7;
 static const float gauss_sigma = 7;
@@ -82,26 +82,11 @@ void MyAlgorithm::initProcess()
     {
         std::cout<<"Error in video show !!!"<<std::endl;
     }
+
+    m_particle_filter.initFilter(m_current_frame.rows,m_current_frame.cols);
 }
-
-
-
-
-
-
-void MyAlgorithm::processNextFrame()
+void MyAlgorithm::doKLT()
 {
-    if(m_video_ptr==NULL)
-    {
-        cout<<"No Video Input !!!"<<endl;
-    }
-
-    /// get next frame as current frame
-    if( !m_video_ptr->read(m_current_frame))//||!m_video_ptr->read(m_current_frame))
-    {
-        std::cout<<"Error in video show !!!"<<std::endl;
-        return;
-    }
     if(c_use_prydown)
     {
         pyrDown(m_current_frame,m_current_frame,Size(m_current_frame.cols/2,m_current_frame.rows/2));
@@ -122,10 +107,12 @@ void MyAlgorithm::processNextFrame()
         }
         m_klt_detector.setCurrentFrame(m_current_frame);
     }
-
     /// tracking and get pre frame
     m_klt_detector.doTrackingKLT();
     m_prev_frame = m_klt_detector.getPreFrame();
+}
+void MyAlgorithm::doTransform()
+{
     vector<Point2f> cur_klt_points,pre_klt_points;
     cur_klt_points = m_klt_detector.getCurKLTPoints();
     pre_klt_points = m_klt_detector.getPreKLTPoints();
@@ -203,7 +190,7 @@ void MyAlgorithm::processNextFrame()
                 for(int k=0;k<3;k++)
                 {
                     dd[k]=(p1[k]>p2[k])?(p1[k]-p2[k]):(p2[k]-p1[k]);
-                    hehe+=dd[k];
+                    hehe=max(hehe,(int)dd[k]);
                 }
                 if(c_display_chromatic_delta)
                 {
@@ -211,7 +198,7 @@ void MyAlgorithm::processNextFrame()
                 }
                 else
                 {
-                    m_delta_frame.at<uchar>(i,j)=hehe/3;
+                    m_delta_frame.at<uchar>(i,j)=hehe;
                 }
 
             }
@@ -222,6 +209,42 @@ void MyAlgorithm::processNextFrame()
     {
         line(m_prev_frame,pre_klt_points[i],cur_klt_points[i],Scalar(255,255,255),1,8,0);
     }
+
+}
+
+
+void MyAlgorithm::doPF()
+{
+    m_particle_filter.setDiffFrame(m_delta_frame);
+    m_particle_filter.doFiltering();
+    vector<Particles> pv = m_particle_filter.getParticles();
+    for(size_t i=0;i<pv.size();i++)
+    {
+        rectangle(m_prev_frame,
+                  Point(std::max(pv.at(i).m_col-2,0.0),std::max(pv.at(i).m_row-2,0.0)),
+                  Point(pv.at(i).m_col,pv.at(i).m_row),Scalar(255,0,0));
+    }
+}
+
+
+
+
+void MyAlgorithm::processNextFrame()
+{
+    if(m_video_ptr==NULL)
+    {
+        cout<<"No Video Input !!!"<<endl;
+    }
+
+    /// get next frame as current frame
+    if( !m_video_ptr->read(m_current_frame))//||!m_video_ptr->read(m_current_frame))
+    {
+        std::cout<<"Error in video show !!!"<<std::endl;
+        return;
+    }
+    doKLT();
+    doTransform();
+    doPF();
 }
 
 

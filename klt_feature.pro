@@ -15,10 +15,12 @@ TEMPLATE = app
 
 SOURCES += main.cpp\
         main_widget.cpp \
-    my_algorithm.cpp
+    my_algorithm.cpp \
+    particle_filter.cpp
 
 HEADERS  += main_widget.h \
-    my_algorithm.h
+    my_algorithm.h \
+    particle_filter.h
 
 FORMS    += main_widget.ui
 

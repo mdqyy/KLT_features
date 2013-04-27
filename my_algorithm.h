@@ -1,5 +1,6 @@
 #ifndef ALGORITHM_H
 #define ALGORITHM_H
+#include "particle_filter.h"
 #include "opencv2/opencv.hpp"
 #include <vector>
 
@@ -66,6 +67,12 @@ public :
     void setVideo(cv::VideoCapture* video);
     void initProcess();
     void processNextFrame(); // temp function
+
+
+private:
+    void doKLT();
+    void doTransform();
+    void doPF();
 private:
     cv::VideoCapture* m_video_ptr;
     cv::Mat m_prev_frame;
@@ -74,6 +81,7 @@ private:
 
     KLTDetector m_klt_detector;
     LinearTransformManager m_lt_manager;
+    ParticleFilter m_particle_filter;
 };
 
 
