@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="kmeans" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin/Debug/kmeans" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+				</Compiler>
+			</Target>
+			<Target title="Release">
+				<Option output="../libkmeans" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="" />
+				<Option object_output="obj/Release/" />
+				<Option type="2" />
+				<Option compiler="gcc" />
+				<Option createDefFile="1" />
+				<Compiler>
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+			<Add option="-fexceptions" />
+		</Compiler>
+		<Unit filename="KCtree.cpp" />
+		<Unit filename="KCtree.h" />
+		<Unit filename="KCutil.cpp" />
+		<Unit filename="KCutil.h" />
+		<Unit filename="KM_ANN.cpp" />
+		<Unit filename="KM_ANN.h" />
+		<Unit filename="KMcenters.cpp" />
+		<Unit filename="KMcenters.h" />
+		<Unit filename="KMdata.cpp" />
+		<Unit filename="KMdata.h" />
+		<Unit filename="KMeans.cpp" />
+		<Unit filename="KMeans.h" />
+		<Unit filename="KMfilterCenters.cpp" />
+		<Unit filename="KMfilterCenters.h" />
+		<Unit filename="KMlocal.cpp" />
+		<Unit filename="KMlocal.h" />
+		<Unit filename="KMrand.cpp" />
+		<Unit filename="KMrand.h" />
+		<Unit filename="KMterm.cpp" />
+		<Unit filename="KMterm.h" />
+		<Unit filename="kmlsample.cpp" />
+		<Extensions>
+			<envvars />
+			<code_completion />
+			<lib_finder disable_auto="1" />
+			<debugger />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>

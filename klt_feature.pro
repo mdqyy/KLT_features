@@ -6,6 +6,8 @@
 
 QT       += core gui\
 
+CONFIG += console \
+
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 TARGET = klt_feature
@@ -63,7 +65,7 @@ LIBS +=  \
 # D:\OpenCV\opencv\debug\install\lib\libopencv_photo244d.dll.a \
 } else {
 
-INCLUDEPATH += /usr/local/include/opencv-2.4.3/\
+INCLUDEPATH += /usr/local/include/ \
 
 LIBS += -L/usr/local/lib -lopencv_core\
          -lopencv_imgproc\
@@ -75,7 +77,8 @@ LIBS += -L/usr/local/lib -lopencv_core\
  -lopencv_objdetect\
  -lopencv_contrib\
  -lopencv_legacy\
- -lopencv_flann
+ -lopencv_flann\
+ libkmeans.a \
 
 }
 

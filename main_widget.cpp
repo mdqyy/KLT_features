@@ -10,8 +10,8 @@ MainWidget::MainWidget(QWidget *parent) :
     QWidget(parent),ui(new Ui::MainWidget),m_cycle(-1)
 {
     ui->setupUi(this);
-//    loadVideo("test1.avi");
-        loadVideo("test.mp4");
+    loadVideo("hzj2.mp4");
+//        loadVideo("test1.avi");
 }
 
 MainWidget::~MainWidget()

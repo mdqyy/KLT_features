@@ -1,5 +1,5 @@
 #include "my_algorithm.h"
-
+#include <sys/time.h>
 
 using namespace cv;
 using std::vector;
@@ -9,20 +9,36 @@ namespace
 {
 RNG rng(12345);
 static const bool c_use_prydown = false;
-static const bool c_down_twice = true;
+static const bool c_down_twice = false;
 static const bool c_display_chromatic_delta = false;
 
-static const int gauss_kernel_size = 7;
-static const float gauss_sigma = 7;
+static const int gauss_kernel_size = 3;
+static const float gauss_sigma = 3;
 
-//static const cv::Size frame_size = cv::Size(320,180);
-static const cv::Size frame_size = cv::Size(0,0);
-static const float resize_scale = 1.0/2;
+static const cv::Size frame_size = cv::Size(640,360);
+//static const cv::Size frame_size = cv::Size(0,0);
+static const float resize_scale = 1/2.5;
 static const int feature_points_num = 500;
 static const int features_num = 4;
+
+
+
+// record time cost
+struct timeval test_clock[2];
+double getTimeCost()
+{
+
+    gettimeofday(&test_clock[1], NULL);
+
+    double timeuse = 1000000 * (test_clock[1].tv_sec - test_clock[0].tv_sec)
+            + test_clock[1].tv_usec - test_clock[0].tv_usec;
+    timeuse /= 1000000;
+    gettimeofday(&test_clock[0], NULL);
+    return timeuse;
+}
 }
 
-MyAlgorithm::MyAlgorithm()
+MyAlgorithm::MyAlgorithm():m_km_dataPts(2, particle_filter::c_particle_num)		// allocate data storage
 {
 
 }
@@ -55,7 +71,11 @@ void MyAlgorithm::initProcess()
     }
     if( m_video_ptr->read(m_current_frame) && m_video_ptr->read(m_current_frame))
     {
-
+        for(int i=0;i<100;i++)
+        {
+            m_video_ptr->grab();
+        }
+        m_video_ptr->retrieve(m_current_frame);
         cout<<"Video Process Start !!!"<<endl;
         if(c_use_prydown)
         {
@@ -116,7 +136,7 @@ void MyAlgorithm::doTransform()
     vector<Point2f> cur_klt_points,pre_klt_points;
     cur_klt_points = m_klt_detector.getCurKLTPoints();
     pre_klt_points = m_klt_detector.getPreKLTPoints();
-
+    cout<<"Time Tra1: "<< getTimeCost()<<"\n";
 
 
     /// get transform matrix
@@ -137,6 +157,7 @@ void MyAlgorithm::doTransform()
     }
     m_lt_manager.setTransformInfo(input,output);
     m_lt_manager.solveTransform();
+    cout<<"Time Tra2: "<< getTimeCost()<<"\n";
 
     /// get delta frame
     if(c_display_chromatic_delta)
@@ -151,6 +172,7 @@ void MyAlgorithm::doTransform()
     Mat output_p;
     int a[2];
     Mat inp(features_num,1,CV_64F);
+    getTimeCost();
     for(size_t i=0;i<m_delta_frame.rows;i++)
     {
         for(size_t j=0;j<m_delta_frame.cols;j++)
@@ -167,6 +189,7 @@ void MyAlgorithm::doTransform()
             a[1]=output_p.at<double>(1,0);//y,rows
             a[1]=min(a[1],m_delta_frame.rows-1);
             a[1]=max(a[1],1);
+            //            cout<<"Time Tra3: "<< getTimeCost()<<"\n";
 
             if(a[0]==0||a[0]==m_delta_frame.cols-1
                     ||a[1]==0||a[1]==m_delta_frame.rows-1)
@@ -202,13 +225,17 @@ void MyAlgorithm::doTransform()
                 }
 
             }
+            //            cout<<"Time Tra3: "<< getTimeCost()<<"\n";
         }
+        //        cout<<"Time Tra3: "<< getTimeCost()<<"\n";
     }
+    cout<<"Time Tra3: "<< getTimeCost()<<"\n";
 
     for( size_t i=0;i<pre_klt_points.size();i++)
     {
         line(m_prev_frame,pre_klt_points[i],cur_klt_points[i],Scalar(255,255,255),1,8,0);
     }
+    cout<<"Time Tra4: "<< getTimeCost()<<"\n";
 
 }
 
@@ -226,11 +253,74 @@ void MyAlgorithm::doPF()
     }
 }
 
+void MyAlgorithm::doClustering()
+{
+
+
+    vector<Particles> pv = m_particle_filter.getParticles();
+    m_km_dataPts.setNPts(pv.size());
+    KMdataArray ptr = m_km_dataPts.getPts();
+    for(size_t i=0;i<pv.size();i++)
+    {
+        ptr[i][0] = pv[i].m_col;
+        ptr[i][1] = pv[i].m_row;
+    }
+    m_km_dataPts.buildKcTree();
+
+    int cernter_num = 5;
+    KMfilterCenters ctrs(cernter_num, m_km_dataPts);		// allocate centers
+    KMterm	term(1000, 0, 0, 0,		// run for 100 stages
+                 0.10,			// min consec RDL
+                 0.10,			// min accum RDL
+                 3,			// max run stages
+                 0.50,			// init. prob. of acceptance
+                 10,			// temp. run length
+                 0.95);			// temp. reduction factor
+
+    // run the algorithms
+    //    cout << "\nExecuting Clustering Algorithm: Lloyd's\n";
+    KMlocalLloyds kmLloyds(ctrs, term);		// repeated Lloyd's
+    ctrs = kmLloyds.execute();			// execute
+
+    // get centers & errors
+    Point mid;
+    double* dist = ctrs.getDists();
+    int* weights = ctrs.getWeights();
+    KMcenterArray center_array = ctrs.getCtrPts();
+    int min_std_error_id=0;
+    double min_std_error = DBL_MAX;
+    double std_error_temp;
+    for(size_t i=0;i<cernter_num;i++)
+    {
+        //        cout<<center_array[i][0]<<" "<<center_array[i][1]<<" "<<weights[i]<<" "<<std::sqrt(dist[i]/weights[i])<<endl;
+        std_error_temp = std::sqrt(dist[i]/weights[i]);
+        if(std_error_temp<min_std_error)
+        {
+            min_std_error = std_error_temp;
+            min_std_error_id = i;
+        }
+        mid = Point(center_array[i][0],center_array[i][1]);
+        circle(m_prev_frame,mid,std_error_temp,Scalar(255,255,0),2);
+        //         rectangle(m_prev_frame,mid-Point(min_std_error,std_error_temp),mid+Point(min_std_error,std_error_temp),Scalar(255,255,0),2);
+    }
+
+    //    cout<<min_std_error<<endl;
+    if(min_std_error>55)
+    {
+        return;
+    }
+    mid = Point(center_array[min_std_error_id][0],center_array[min_std_error_id][1]);
+    circle(m_prev_frame,mid,min_std_error,Scalar(255,255,0),8);
+    //    rectangle(m_prev_frame,mid-Point(min_std_error,min_std_error),mid+Point(min_std_error,min_std_error),Scalar(255,255,0),6);
+
+    //    printSummary(kmLloyds, dataPts, ctrs);
+}
 
 
 
 void MyAlgorithm::processNextFrame()
 {
+    getTimeCost();
     if(m_video_ptr==NULL)
     {
         cout<<"No Video Input !!!"<<endl;
@@ -243,8 +333,13 @@ void MyAlgorithm::processNextFrame()
         return;
     }
     doKLT();
+    cout<<"Time KLT: "<< getTimeCost()<<"\n";
     doTransform();
+    cout<<"Time Tra: "<< getTimeCost()<<"\n";
     doPF();
+    cout<<"Time PF : "<< getTimeCost()<<"\n";
+    doClustering();
+    cout<<"Time Clu: "<< getTimeCost()<<endl;
 }
 
 
@@ -327,7 +422,7 @@ std::vector<Point2f> KLTDetector::get_KLT_features(Mat image,int maxCorners)
 
 
     // output corners number
-    std::cout<<"** Number of corners detected: "<<corners.size()<<std::endl;
+    //    std::cout<<"** Number of corners detected: "<<corners.size()<<std::endl;
     return corners;
 }
 std::vector<cv::Point2f> KLTDetector::getPreKLTPoints()
@@ -383,7 +478,7 @@ void LinearTransformManager::solveTransform()
         }
     }
 
-    cout<<"After selection: "<<newinput.rows<<endl;
+    //    cout<<"After selection: "<<newinput.rows<<endl;
     if(!newinput.rows)
     {
         return;

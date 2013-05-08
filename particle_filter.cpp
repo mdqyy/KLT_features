@@ -5,12 +5,13 @@ using std::vector;
 using std::cout;
 using std::flush;
 using std::endl;
-namespace
+namespace particle_filter
 {
 static const int c_pro_mask_width = 7;
 static const int c_time = 1.0/15;
-static const int c_particle_num = 1000;
-
+int c_particle_num = 1000;
+static const double c_gaussion_variance = 16;
+static const double c_gaussion_variance_v = 500;
 double utils_gaussrand(double expectation,double variance)
 {
     static double V1, V2, S;
@@ -53,6 +54,10 @@ double utils_randBetween(int begin,int end)
 }
 }
 
+using namespace particle_filter;
+
+
+
 ParticleFilter::ParticleFilter()
 {
     m_rows=0;
@@ -81,13 +86,13 @@ void ParticleFilter::setDiffFrame(cv::Mat diff)
 }
 void ParticleFilter::doFiltering()
 {
-    cout<<"1"<<std::flush;
+//    cout<<"1"<<std::flush;
     motionStep();
-    cout<<"2"<<std::flush;
+//    cout<<"2"<<std::flush;
     measureStep();
-    cout<<"3"<<std::flush;
+//    cout<<"3"<<std::flush;
     resampleStep();
-    cout<<"4"<<std::endl;
+//    cout<<"4"<<std::endl;
 
 }
 
@@ -107,8 +112,8 @@ void ParticleFilter::initFilter(int rows,int cols)
     {
         tempp.m_row = utils_randBetween(0,m_rows);
         tempp.m_col = utils_randBetween(0,m_cols);
-        tempp.m_row_v = utils_gaussrand(0,4);
-        tempp.m_col_v = utils_gaussrand(0,4);
+        tempp.m_row_v = utils_gaussrand(0,c_gaussion_variance_v);
+        tempp.m_col_v = utils_gaussrand(0,c_gaussion_variance_v);
         m_particles.push_back(tempp);
     }
 }
@@ -117,14 +122,14 @@ void ParticleFilter::motionStep()
     int le = c_pro_mask_width/2;
     for(size_t i=0;i<m_particles.size();i++)
     {
-        m_particles[i].m_row += c_time*m_particles[i].m_row_v+utils_gaussrand(0,4);
+        m_particles[i].m_row += c_time*m_particles[i].m_row_v+utils_gaussrand(0,c_gaussion_variance);
         m_particles[i].m_row = m_particles[i].m_row>(m_rows-1-le)?(m_rows-1-le):m_particles[i].m_row;
         m_particles[i].m_row = m_particles[i].m_row<(le)?(le):m_particles[i].m_row;
-        m_particles[i].m_col +=c_time* m_particles[i].m_col_v+utils_gaussrand(0,4);
+        m_particles[i].m_col +=c_time* m_particles[i].m_col_v+utils_gaussrand(0,c_gaussion_variance);
         m_particles[i].m_col = m_particles[i].m_col>(m_cols-1-le)?(m_cols-1-le):m_particles[i].m_col;
         m_particles[i].m_col = m_particles[i].m_col<(le)?(le):m_particles[i].m_col;
-        m_particles[i].m_row_v += utils_gaussrand(0,4);
-        m_particles[i].m_col_v += utils_gaussrand(0,4);
+        m_particles[i].m_row_v += utils_gaussrand(0,c_gaussion_variance_v);
+        m_particles[i].m_col_v += utils_gaussrand(0,c_gaussion_variance_v);
     }
 }
 void ParticleFilter::measureStep()
@@ -186,17 +191,17 @@ void ParticleFilter::resampleStep()
         {
             tempp.m_row = utils_randBetween(0,m_rows);
             tempp.m_col = utils_randBetween(0,m_cols);
-            tempp.m_row_v = utils_gaussrand(0,4);
-            tempp.m_col_v = utils_gaussrand(0,4);
+            tempp.m_row_v = utils_gaussrand(0,c_gaussion_variance_v);
+            tempp.m_col_v = utils_gaussrand(0,c_gaussion_variance_v);
             tempp.m_weight = 1.0/c_particle_num;
         }
         else
         {
 
-            tempp.m_row = m_particles.at(i).m_row+utils_gaussrand(0,4);
-            tempp.m_col = m_particles.at(i).m_col+utils_gaussrand(0,4);
-            tempp.m_row_v = m_particles.at(i).m_row_v+utils_gaussrand(0,4);
-            tempp.m_col_v = m_particles.at(i).m_col_v+utils_gaussrand(0,4);
+            tempp.m_row = m_particles.at(i).m_row+utils_gaussrand(0,c_gaussion_variance);
+            tempp.m_col = m_particles.at(i).m_col+utils_gaussrand(0,c_gaussion_variance);
+            tempp.m_row_v = m_particles.at(i).m_row_v+utils_gaussrand(0,c_gaussion_variance_v);
+            tempp.m_col_v = m_particles.at(i).m_col_v+utils_gaussrand(0,c_gaussion_variance_v);
             tempp.m_weight = 1.0/c_particle_num;
         }
         new_part.push_back(tempp);

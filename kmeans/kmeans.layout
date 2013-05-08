@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_layout_file>
+	<ActiveTarget name="Release" />
+	<File name="KMcenters.h" open="0" top="0" tabpos="11">
+		<Cursor position="2439" topLine="33" />
+	</File>
+	<File name="KMdata.cpp" open="0" top="0" tabpos="1">
+		<Cursor position="1282" topLine="13" />
+	</File>
+	<File name="KMeans.cpp" open="0" top="0" tabpos="10">
+		<Cursor position="1891" topLine="26" />
+	</File>
+	<File name="KMfilterCenters.cpp" open="1" top="0" tabpos="2">
+		<Cursor position="1745" topLine="28" />
+	</File>
+	<File name="KMfilterCenters.h" open="1" top="1" tabpos="3">
+		<Cursor position="4846" topLine="161" />
+	</File>
+	<File name="KMlocal.cpp" open="0" top="0" tabpos="8">
+		<Cursor position="1506" topLine="20" />
+	</File>
+	<File name="KMlocal.h" open="0" top="0" tabpos="7">
+		<Cursor position="11508" topLine="292" />
+	</File>
+	<File name="KMrand.cpp" open="0" top="0" tabpos="4">
+		<Cursor position="13053" topLine="0" />
+	</File>
+	<File name="KMrand.h" open="0" top="0" tabpos="5">
+		<Cursor position="3086" topLine="63" />
+	</File>
+	<File name="KMterm.cpp" open="0" top="0" tabpos="6">
+		<Cursor position="1442" topLine="9" />
+	</File>
+	<File name="kmlsample.cpp" open="1" top="0" tabpos="1">
+		<Cursor position="8984" topLine="232" />
+	</File>
+</CodeBlocks_layout_file>

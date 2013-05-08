@@ -1,0 +1,91 @@
+# depslib dependency file v1.0
+1128136156 source:/home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/KCutil.cpp
+	"KCutil.h"
+
+1128136156 /home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/KCutil.h
+	"KCtree.h"
+
+1264524642 /home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/KCtree.h
+	"KMeans.h"
+	"KCutil.h"
+
+1128136156 /home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/KMeans.h
+	"KM_ANN.h"
+
+1128136156 /home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/KM_ANN.h
+	<cstdlib>
+	<fstream>
+	<iomanip>
+	<climits>
+	<cfloat>
+	<ctime>
+	<cassert>
+	<string>
+	<climits>
+
+1128136156 source:/home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/KM_ANN.cpp
+	"KM_ANN.h"
+	"KMrand.h"
+
+1128136156 /home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/KMrand.h
+	<cstdlib>
+	<math.h>
+	"KMeans.h"
+
+1128136156 source:/home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/KMcenters.cpp
+	"KMcenters.h"
+
+1128136156 /home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/KMcenters.h
+	"KMeans.h"
+	"KMdata.h"
+
+1128136156 /home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/KMdata.h
+	"KMeans.h"
+	"KCtree.h"
+
+1128136156 source:/home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/KMdata.cpp
+	"KMdata.h"
+	"KMrand.h"
+
+1128136156 source:/home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/KMeans.cpp
+	<iostream>
+	"KMeans.h"
+	"KCtree.h"
+	"KMrand.h"
+
+1128136156 source:/home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/KMlocal.cpp
+	"KMlocal.h"
+
+1128136156 /home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/KMlocal.h
+	<cmath>
+	"KMeans.h"
+	"KMdata.h"
+	"KMfilterCenters.h"
+	"KMterm.h"
+	"KMrand.h"
+
+1128136156 /home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/KMfilterCenters.h
+	"KMcenters.h"
+
+1128136156 /home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/KMterm.h
+	"KMeans.h"
+
+1128136156 source:/home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/KMrand.cpp
+	"KMrand.h"
+
+1128136156 source:/home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/KMterm.cpp
+	<cmath>
+	"KMterm.h"
+
+1367907417 source:/home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/kmlsample.cpp
+	<cstdlib>
+	<iostream>
+	<cstring>
+	<string>
+	"KMlocal.h"
+
+1367907765 source:/home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/KCtree.cpp
+	"KCtree.h"
+	"KMfilterCenters.h"
+	"KMrand.h"
+

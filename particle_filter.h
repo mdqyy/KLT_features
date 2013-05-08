@@ -2,6 +2,12 @@
 #define PARTICLE_FILTER_H
 #include <opencv2/opencv.hpp>
 #include <vector>
+
+namespace particle_filter
+{
+extern int c_particle_num;
+}
+
 struct Particles
 {
     Particles()
