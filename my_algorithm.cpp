@@ -320,24 +320,18 @@ void MyAlgorithm::doClustering()
             min_std_error_id = i;
         }
         mid = Point(center_array[i][0],center_array[i][1]);
-        circle(m_prev_frame,mid,std_error_temp,Scalar(255,255,0),2);
-        //         rectangle(m_prev_frame,mid-Point(min_std_error,std_error_temp),mid+Point(min_std_error,std_error_temp),Scalar(255,255,0),2);
+//        circle(m_prev_frame,mid,std_error_temp,Scalar(255,255,0),2);
     }
 
     //    cout<<min_std_error<<endl;
-    if(min_std_error>55)
+    if(min_std_error>30)
     {
         return;
     }
     mid = Point(center_array[min_std_error_id][0],center_array[min_std_error_id][1]);
     //    cout<<mid<<endl;
-    //    cout<<min_std_error<<endl;
-
-
-    circle(m_prev_frame,mid,min_std_error,Scalar(255,255,0),8);
-    //    rectangle(m_prev_frame,mid-Point(min_std_error,min_std_error),mid+Point(min_std_error,min_std_error),Scalar(255,255,0),6);
-
-    //    printSummary(kmLloyds, dataPts, ctrs);
+        cout<<min_std_error<<endl;
+    circle(m_prev_frame,mid,min_std_error,Scalar(255,255,0),3);
 }
 
 

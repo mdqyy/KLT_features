@@ -11,11 +11,11 @@ using std::flush;
 using std::endl;
 namespace particle_filter
 {
-static const int c_pro_mask_width = 7;
+static const int c_pro_mask_width = 5;
 static const int c_time = 1.0/15;
 int c_particle_num = 1000;
-static const double c_gaussion_variance = 100;
-static const double c_gaussion_variance_v = 5000;
+static const double c_gaussion_variance = 60;
+static const double c_gaussion_variance_v = 225;
 double utils_gaussrand(double expectation,double variance,int thread_id=0)
 {
     static int phase[THNUM] = {0};
