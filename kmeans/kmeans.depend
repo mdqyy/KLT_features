@@ -64,13 +64,13 @@
 	"KMterm.h"
 	"KMrand.h"
 
-1128136156 /home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/KMfilterCenters.h
+1367989656 /home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/KMfilterCenters.h
 	"KMcenters.h"
 
 1128136156 /home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/KMterm.h
 	"KMeans.h"
 
-1128136156 source:/home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/KMrand.cpp
+1367981070 source:/home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/KMrand.cpp
 	"KMrand.h"
 
 1128136156 source:/home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/KMterm.cpp
@@ -86,6 +86,10 @@
 
 1367907765 source:/home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/KCtree.cpp
 	"KCtree.h"
+	"KMfilterCenters.h"
+	"KMrand.h"
+
+1367911427 source:/home/yerrick/shared_Development/graduate_paper/KLT_features/kmeans/KMfilterCenters.cpp
 	"KMfilterCenters.h"
 	"KMrand.h"
 

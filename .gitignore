@@ -11,3 +11,4 @@ moc_*
 ui_*.h
 debug/
 release/
+bin/

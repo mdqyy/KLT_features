@@ -3,6 +3,7 @@
 #include "particle_filter.h"
 #include "kmeans/KMlocal.h"
 #include "opencv2/opencv.hpp"
+#include "opencv2/gpu/gpu.hpp"
 #include <vector>
 
 
@@ -41,13 +42,26 @@ public:
     cv::Mat getPreFrame();
     cv::Mat getCurFrame();
 private:
+    // cpu format
     cv::Mat m_current_frame;
     cv::Mat m_current_frame_gray;
     cv::Mat m_prev_frame;
     cv::Mat m_prev_frame_gray;
 
+    // gpu format
+    cv::gpu::GpuMat m_current_frame_gpu;
+    cv::gpu::GpuMat m_prev_frame_gpu;
+    cv::gpu::GpuMat m_current_frame_gray_gpu;
+    cv::gpu::GpuMat m_prev_frame_gray_gpu;
+//    inline bool isFlowCorrect(cv::Point2f u)
+//    {
+//        return !cv::cvIsNaN(u.x) && !cv::cvIsNaN(u.y) && fabs(u.x) < 1e9 && fabs(u.y) < 1e9;
+//    }
+
+    // klt points
     std::vector<cv::Point2f> m_pre_klt_points;
     std::vector<cv::Point2f> m_cur_klt_points;
+
 
 private:
 

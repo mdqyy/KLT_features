@@ -22,7 +22,8 @@ SOURCES += main.cpp\
 
 HEADERS  += main_widget.h \
     my_algorithm.h \
-    particle_filter.h
+    particle_filter.h \
+    parameters.h
 
 FORMS    += main_widget.ui
 
@@ -78,8 +79,13 @@ LIBS += -L/usr/local/lib -lopencv_core\
  -lopencv_contrib\
  -lopencv_legacy\
  -lopencv_flann\
+ -lopencv_gpu\
  libkmeans.a \
 
 }
 
-
+# openMP
+# C++ flags
+QMAKE_CXXFLAGS += -fopenmp
+# linker options
+QMAKE_LFLAGS += -fopenmp

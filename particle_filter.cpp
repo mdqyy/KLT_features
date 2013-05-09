@@ -1,5 +1,9 @@
 #include "particle_filter.h"
 #include <algorithm>
+#include <omp.h>
+#include <sys/time.h>
+#include "parameters.h"
+
 using cv::Mat;
 using std::vector;
 using std::cout;
@@ -10,33 +14,35 @@ namespace particle_filter
 static const int c_pro_mask_width = 7;
 static const int c_time = 1.0/15;
 int c_particle_num = 1000;
-static const double c_gaussion_variance = 16;
-static const double c_gaussion_variance_v = 500;
-double utils_gaussrand(double expectation,double variance)
+static const double c_gaussion_variance = 100;
+static const double c_gaussion_variance_v = 5000;
+double utils_gaussrand(double expectation,double variance,int thread_id=0)
 {
-    static double V1, V2, S;
-    static int phase = 0;
+    static int phase[THNUM] = {0};
     double X;
+    static double S[THNUM]={0};
+    static double V1[THNUM]={0}, V2[THNUM]={0};
 
-    if ( phase == 0 )
+    if ( phase[thread_id] == 0 )
     {
         do
         {
             double U1 = (double)rand() / RAND_MAX;
             double U2 = (double)rand() / RAND_MAX;
 
-            V1 = 2 * U1 - 1;
-            V2 = 2 * U2 - 1;
-            S = V1 * V1 + V2 * V2;
+            V1[thread_id] = 2 * U1 - 1;
+            V2[thread_id] = 2 * U2 - 1;
+            S[thread_id] = V1[thread_id] * V1[thread_id] + V2[thread_id] * V2[thread_id];
         }
-        while(S >= 1 || S == 0);
+        while(S[thread_id] >= 1 || S[thread_id] == 0);
 
-        X = V1 * sqrt(-2 * log(S) / S);
+        X = V1[thread_id] * sqrt(-2 * log(S[thread_id]) / S[thread_id]);
     }
     else
-        X = V2 * sqrt(-2 * log(S) / S);
+        X = V2[thread_id] * sqrt(-2 * log(S[thread_id]) / S[thread_id]);
 
-    phase = 1 - phase;
+
+    phase[thread_id] = 1 - phase[thread_id];
 
     double d = (variance>0)?sqrt(variance):sqrt(-variance);
 
@@ -52,6 +58,21 @@ double utils_randBetween(int begin,int end)
     else
         return end + rand_val;
 }
+
+struct timeval test_clock[2];
+double getTimeCost()
+{
+
+    gettimeofday(&test_clock[1], NULL);
+
+    double timeuse = 1000000 * (test_clock[1].tv_sec - test_clock[0].tv_sec)
+            + test_clock[1].tv_usec - test_clock[0].tv_usec;
+    timeuse /= 1000000;
+    gettimeofday(&test_clock[0], NULL);
+    return timeuse;
+}
+
+
 }
 
 using namespace particle_filter;
@@ -86,13 +107,14 @@ void ParticleFilter::setDiffFrame(cv::Mat diff)
 }
 void ParticleFilter::doFiltering()
 {
-//    cout<<"1"<<std::flush;
+    //    cout<<"1"<<std::flush;
+    getTimeCost();
     motionStep();
-//    cout<<"2"<<std::flush;
+//    cout<<"PF 1: "<<getTimeCost()<<std::flush;
     measureStep();
-//    cout<<"3"<<std::flush;
+//    cout<<"PF 2: "<<getTimeCost()<<std::flush;
     resampleStep();
-//    cout<<"4"<<std::endl;
+    //    cout<<"4"<<std::endl;
 
 }
 
@@ -120,16 +142,28 @@ void ParticleFilter::initFilter(int rows,int cols)
 void ParticleFilter::motionStep()
 {
     int le = c_pro_mask_width/2;
+    //#pragma omp parallel num_threads(THNUM)
+    //    {
+    //        int thrid = omp_get_thread_num(); // get thread id
+    //        int mini = m_particles.size()/THNUM*thrid;
+    //        int maxi = mini+m_particles.size()/THNUM;
+    //        if(thrid==THNUM-1)
+    //        {
+    //            maxi = std::max(maxi,(int)m_particles.size());
+    //        }
+
+    //        for(size_t i=mini;i<maxi;i++)
+    int thrid=0;
     for(size_t i=0;i<m_particles.size();i++)
     {
-        m_particles[i].m_row += c_time*m_particles[i].m_row_v+utils_gaussrand(0,c_gaussion_variance);
+        m_particles[i].m_row += c_time*m_particles[i].m_row_v+utils_gaussrand(0,c_gaussion_variance,thrid);
         m_particles[i].m_row = m_particles[i].m_row>(m_rows-1-le)?(m_rows-1-le):m_particles[i].m_row;
         m_particles[i].m_row = m_particles[i].m_row<(le)?(le):m_particles[i].m_row;
-        m_particles[i].m_col +=c_time* m_particles[i].m_col_v+utils_gaussrand(0,c_gaussion_variance);
+        m_particles[i].m_col +=c_time* m_particles[i].m_col_v+utils_gaussrand(0,c_gaussion_variance,thrid);
         m_particles[i].m_col = m_particles[i].m_col>(m_cols-1-le)?(m_cols-1-le):m_particles[i].m_col;
         m_particles[i].m_col = m_particles[i].m_col<(le)?(le):m_particles[i].m_col;
-        m_particles[i].m_row_v += utils_gaussrand(0,c_gaussion_variance_v);
-        m_particles[i].m_col_v += utils_gaussrand(0,c_gaussion_variance_v);
+        m_particles[i].m_row_v += utils_gaussrand(0,c_gaussion_variance_v,thrid);
+        m_particles[i].m_col_v += utils_gaussrand(0,c_gaussion_variance_v,thrid);
     }
 }
 void ParticleFilter::measureStep()
@@ -174,14 +208,14 @@ void ParticleFilter::resampleStep()
         t_c[i] = t_c[i-1] + m_particles[i].m_weight;
     }
 
-    int i;
+    int i=0;
     double t_u[c_particle_num];
     int le = c_pro_mask_width/2;
     t_u[0] = rand()*1.0/RAND_MAX/c_particle_num;
     for(int j=0; j<m_particles.size(); j++)
     {
         t_u[j] = t_u[0] + 1.0/c_particle_num* j;
-        i=0;
+//        i=0;
         while(t_u[j] > t_c[i])
         {
             i++;
