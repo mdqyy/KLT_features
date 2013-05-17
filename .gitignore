@@ -12,3 +12,5 @@ ui_*.h
 debug/
 release/
 bin/
+image/
+video/

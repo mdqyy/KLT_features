@@ -13,7 +13,7 @@ namespace particle_filter
 {
 static const int c_pro_mask_width = 5;
 static const int c_time = 1.0/15;
-int c_particle_num = 1000;
+int c_particle_num = 2000;
 static const double c_gaussion_variance = 60;
 static const double c_gaussion_variance_v = 225;
 double utils_gaussrand(double expectation,double variance,int thread_id=0)
@@ -88,15 +88,20 @@ ParticleFilter::ParticleFilter()
 void ParticleFilter::setDiffFrame(cv::Mat diff)
 {
     m_frame_distribution.create(m_rows,m_cols,CV_64F);
-
+    double max=0;
     double sum = 0;
     for(int i=0;i<m_rows;i++)
     {
         for(int j=0;j<m_cols;j++)
         {
             sum += diff.at<unsigned char>(i,j);
+            if(max<diff.at<unsigned char>(i,j))
+            {
+                max = diff.at<unsigned char>(i,j);
+            }
         }
     }
+//    cout<<max<<endl;
     for(int i=0;i<m_rows;i++)
     {
         for(int j=0;j<m_cols;j++)
@@ -107,15 +112,9 @@ void ParticleFilter::setDiffFrame(cv::Mat diff)
 }
 void ParticleFilter::doFiltering()
 {
-    //    cout<<"1"<<std::flush;
-    getTimeCost();
     motionStep();
-//    cout<<"PF 1: "<<getTimeCost()<<std::flush;
     measureStep();
-//    cout<<"PF 2: "<<getTimeCost()<<std::flush;
     resampleStep();
-    //    cout<<"4"<<std::endl;
-
 }
 
 const vector<Particles>& ParticleFilter::getParticles()
@@ -142,17 +141,6 @@ void ParticleFilter::initFilter(int rows,int cols)
 void ParticleFilter::motionStep()
 {
     int le = c_pro_mask_width/2;
-    //#pragma omp parallel num_threads(THNUM)
-    //    {
-    //        int thrid = omp_get_thread_num(); // get thread id
-    //        int mini = m_particles.size()/THNUM*thrid;
-    //        int maxi = mini+m_particles.size()/THNUM;
-    //        if(thrid==THNUM-1)
-    //        {
-    //            maxi = std::max(maxi,(int)m_particles.size());
-    //        }
-
-    //        for(size_t i=mini;i<maxi;i++)
     int thrid=0;
     for(size_t i=0;i<m_particles.size();i++)
     {
@@ -215,12 +203,10 @@ void ParticleFilter::resampleStep()
     for(int j=0; j<m_particles.size(); j++)
     {
         t_u[j] = t_u[0] + 1.0/c_particle_num* j;
-//        i=0;
         while(t_u[j] > t_c[i])
         {
             i++;
         }
-        //        cout<<i<<endl;
         if((rand()*1.0/RAND_MAX)<0.25)
         {
             tempp.m_row = utils_randBetween(0,m_rows);

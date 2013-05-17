@@ -6,13 +6,13 @@
 //----------------------------------------------------------------------
 // Copyright (C) 2004-2005 David M. Mount and University of Maryland
 // All Rights Reserved.
-// 
+//
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation; either version 2 of the License, or (at
 // your option) any later version.  See the file Copyright.txt in the
 // main directory.
-// 
+//
 // The University of Maryland and the authors make no representations
 // about the suitability or fitness of this software for any purpose.
 // It is provided "as is" without express or implied warranty.
@@ -55,7 +55,7 @@ typedef KMlocal* KMlocalPtr;			// generic algorithm pointer
 //	Stages are grouped into "runs".  Intuitively, a run involves a
 //	(small) number of stages in search of a better solution.  A run
 //	might end, say, because a better solution was found or a fixed
-//	number of stages have been performed without any improvement. 
+//	number of stages have been performed without any improvement.
 //
 //	After a run is finished, we check to see whether we want to
 //	"accept" the solution.  Presumably this happens if the cost is
@@ -70,7 +70,7 @@ typedef KMlocal* KMlocalPtr;			// generic algorithm pointer
 //	The generic local search algorithm is shown below.  The various
 //	functions are overridden by the specific classes which provide
 //	the concrete details.
-//	
+//
 //	reset()					// resets curr and best
 //	while ( !isDone() ) {			// while not done
 //	  beginRun()				// begin a new run
@@ -420,7 +420,7 @@ protected:					// overridden methods
 //		followed by a consecutive sequence of Lloyd's steps.  A
 //		graphical representation of one run is presented below.
 //
-//	      +--+            +---+             +--------> save -----> 
+//	      +--+            +---+             +--------> save ----->
 //	      |  |            |   |            Y|
 //	      V  |            V   |             |     N
 //	----> Swap ------>   Lloyd's   ----> Accept? ----> restore -->
@@ -584,11 +584,11 @@ protected:					// overridden methods
 //------------------------------------------------------------------------
 
 template <typename T>				// min function
-T kmMin(const T& x, const T& y) 
+T kmMin(const T& x, const T& y)
 {  return (x < y ? x : y); }
 
 template <typename T>				// max function
-T kmMax(const T& x, const T& y) 
+T kmMax(const T& x, const T& y)
 {  return (x > y ? x : y); }
 
 class KMlocalHybrid : public KMlocal {

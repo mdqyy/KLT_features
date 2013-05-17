@@ -10,7 +10,7 @@ MainWidget::MainWidget(QWidget *parent) :
     QWidget(parent),ui(new Ui::MainWidget),m_cycle(-1)
 {
     ui->setupUi(this);
-    loadVideo("hzj2.mp4");
+    loadVideo("./video/e8.mp4");
 //        loadVideo("test1.avi");
 }
 
@@ -55,6 +55,7 @@ void MainWidget::processVideo(VideoCapture& video)
 //    showImage(m_klt_detector.getCurFrame(),ui->m_main_label);
     showImage(m_algorithm.getDeltaFrame(),ui->m_main_label);
     showImage(m_algorithm.getPreFrame(),ui->m_main_label_2);
+    showImage(m_algorithm.getCurFrame(),ui->m_main_label_3);
     this->update();
 }
 

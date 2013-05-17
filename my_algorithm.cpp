@@ -3,6 +3,7 @@
 #include <omp.h>
 #include "parameters.h"
 #include <opencv2/gpu/gpu.hpp>
+#include <ostream>
 using namespace cv;
 using std::vector;
 using std::cout;
@@ -14,17 +15,23 @@ static const bool c_use_prydown = false;
 static const bool c_down_twice = false;
 static const bool c_display_chromatic_delta = false;
 
-static const int gauss_kernel_size = 3;
+static const bool use_gauss = true;
+static const int gauss_kernel_size = 5;
 static const float gauss_sigma = 3;
-
+//static const cv::Size frame_size = cv::Size(640,360);
+//static const cv::Size frame_size = cv::Size(480,270);
 static const cv::Size frame_size = cv::Size(320,180);
+//static const cv::Size frame_size = cv::Size(240,135);
+//static const cv::Size frame_size = cv::Size(160,90);
 //static const cv::Size frame_size = cv::Size(0,0);
 static const float resize_scale = 1/2.5;
-static const int feature_points_num = 2000;
-static const int features_num = 4;
+static const int feature_points_num = 500;
 
+static std::ofstream time_log("time.log");
+static std::ofstream delta_frame_log("delta_sum.log");
+static int cycle = 1;
 
-
+static int mode =  1; // 1 normal; 2 clc sum delta frame;
 
 // record time cost
 struct timeval test_clock[2];
@@ -51,10 +58,33 @@ MyAlgorithm::~MyAlgorithm()
 }
 Mat MyAlgorithm::getCurFrame()
 {
-    return m_current_frame;
+    Mat retv = m_raw_frame.clone();
+    if(m_min_std_error<30)
+    {
+        circle(retv,m_min_mid_p,m_min_std_error,Scalar(255,255,0),3);
+    }
+    return retv;
 }
 Mat MyAlgorithm::getPreFrame()
 {
+    for( size_t i=0;i<m_pre_klt_points.size();i++)
+    {
+        line(m_prev_frame,m_pre_klt_points[i],m_cur_klt_points[i],Scalar(255,255,255),1,8,0);
+    }
+
+    vector<Particles> pv = m_particle_filter.getParticles();
+    for(size_t i=0;i<pv.size();i++)
+    {
+        rectangle(m_prev_frame,
+                  Point(std::max(pv.at(i).m_col-1,0.0),std::max(pv.at(i).m_row-1,0.0)),
+                  Point(pv.at(i).m_col,pv.at(i).m_row),Scalar(255,0,0));
+    }
+
+    for(size_t i=0;i<m_mid_p.size();i++)
+    {
+        circle(m_prev_frame,m_mid_p.at(i),m_std_error.at(i),Scalar(255,255,0),1);
+    }
+
     return m_prev_frame;
 }
 Mat MyAlgorithm::getDeltaFrame()
@@ -75,10 +105,10 @@ void MyAlgorithm::initProcess()
     }
     if( m_video_ptr->read(m_current_frame) && m_video_ptr->read(m_current_frame))
     {
-        for(int i=0;i<100;i++)
-        {
-            m_video_ptr->grab();
-        }
+//        for(int i=0;i<400;i++)
+//        {
+//            m_video_ptr->grab();
+//        }
         m_video_ptr->retrieve(m_current_frame);
         cout<<"Video Process Start !!!"<<endl;
         if(c_use_prydown)
@@ -111,61 +141,54 @@ void MyAlgorithm::initProcess()
 }
 void MyAlgorithm::doKLT()
 {
-    getTimeCost();
-    if(c_use_prydown)
-    {
-        pyrDown(m_current_frame,m_current_frame,Size(m_current_frame.cols/2,m_current_frame.rows/2));
-        if(c_down_twice)
-        {
-            pyrDown(m_current_frame,m_current_frame,Size(m_current_frame.cols/2,m_current_frame.rows/2));
-        }
-        m_klt_detector.setCurrentFrame(m_current_frame);
-    }
-    else
-    {
-        getTimeCost();
-//        GaussianBlur(m_current_frame,m_current_frame,Size(gauss_kernel_size,gauss_kernel_size),gauss_sigma);
-        cout<<"KLT 00: "<<getTimeCost()<<endl;
-        cv::resize(m_current_frame,m_current_frame,frame_size,resize_scale,resize_scale,INTER_LINEAR );
-        if(c_down_twice)
-        {
-            GaussianBlur(m_current_frame,m_current_frame,Size(gauss_kernel_size,gauss_kernel_size),10);
-            cv::resize(m_current_frame,m_current_frame,frame_size,resize_scale,resize_scale,INTER_LINEAR );
-        }
-//        cout<<"KLT 01: "<<getTimeCost()<<endl;
-        m_klt_detector.setCurrentFrame(m_current_frame);
-    }
-//    cout<<"KLT 1: "<<getTimeCost();
+
     /// tracking and get pre frame
     m_klt_detector.doTrackingKLT();
-//    cout<<"KLT 2: "<<getTimeCost();
-    m_prev_frame = m_klt_detector.getPreFrame();
+    m_cur_klt_points = m_klt_detector.getCurKLTPoints();
+    m_pre_klt_points = m_klt_detector.getPreKLTPoints();
 }
 void MyAlgorithm::doTransform()
 {
-    vector<Point2f> cur_klt_points,pre_klt_points;
-    cur_klt_points = m_klt_detector.getCurKLTPoints();
-    pre_klt_points = m_klt_detector.getPreKLTPoints();
-
-
     /// get transform matrix
-    Mat input(cur_klt_points.size(),features_num,CV_64F);
-    Mat output(2,pre_klt_points.size(),CV_64F);
-    for(size_t t=0;t<pre_klt_points.size();t++)
+    Mat input_x(m_cur_klt_points.size(),TRANSFORM_NUM,CV_64F);
+    Mat input_y(m_cur_klt_points.size(),TRANSFORM_NUM,CV_64F);
+    Mat output_x(1,m_pre_klt_points.size(),CV_64F);
+    Mat output_y(1,m_pre_klt_points.size(),CV_64F);
+    for(size_t t=0;t<m_pre_klt_points.size();t++)
     {
 
-        input.at<double>(t,0) = cur_klt_points.at(t).x;
-        input.at<double>(t,1) = cur_klt_points.at(t).y;
-        input.at<double>(t,2) = 1;
-        if(features_num == 4)
+        input_y.at<double>(t,0) = input_x.at<double>(t,0) = m_cur_klt_points.at(t).x;
+        input_y.at<double>(t,1) = input_x.at<double>(t,1) = m_cur_klt_points.at(t).y;
+        input_y.at<double>(t,2) = input_x.at<double>(t,2) = 1;
+        if(TRANSFORM_NUM==3)
         {
-            input.at<double>(t,3) = cur_klt_points.at(t).x*cur_klt_points.at(t).y;
+
         }
-        output.at<double>(0,t) = pre_klt_points.at(t).x;
-        output.at<double>(1,t) = pre_klt_points.at(t).y;
+        else if(TRANSFORM_NUM == 4)
+        {
+            input_y.at<double>(t,3) = input_x.at<double>(t,3) = m_cur_klt_points.at(t).x*m_cur_klt_points.at(t).y;
+        }
+        else if(TRANSFORM_NUM == 5)
+        {
+            input_x.at<double>(t,3) = m_cur_klt_points.at(t).x*m_cur_klt_points.at(t).x;
+            input_x.at<double>(t,4) = m_cur_klt_points.at(t).x*m_cur_klt_points.at(t).y;
+
+            input_y.at<double>(t,3) = m_cur_klt_points.at(t).y*m_cur_klt_points.at(t).y;
+            input_y.at<double>(t,4) = m_cur_klt_points.at(t).x*m_cur_klt_points.at(t).y;
+
+        }
+        else if(TRANSFORM_NUM == 6)
+        {
+            input_y.at<double>(t,3) =input_x.at<double>(t,3) = m_cur_klt_points.at(t).x*m_cur_klt_points.at(t).x;
+            input_y.at<double>(t,4) =input_x.at<double>(t,4) = m_cur_klt_points.at(t).y*m_cur_klt_points.at(t).y;
+            input_y.at<double>(t,5) =input_x.at<double>(t,5) = m_cur_klt_points.at(t).x*m_cur_klt_points.at(t).y;
+        }
+        output_x.at<double>(0,t) = m_pre_klt_points.at(t).x;
+        output_y.at<double>(0,t) = m_pre_klt_points.at(t).y;
     }
-    m_lt_manager.setTransformInfo(input,output);
+    m_lt_manager.setTransformInfo(input_x,input_y,output_x,output_y);
     m_lt_manager.solveTransform();
+    time_log<<getTimeCost()<<" ";
 
     /// get delta frame
     if(c_display_chromatic_delta)
@@ -177,13 +200,9 @@ void MyAlgorithm::doTransform()
         m_delta_frame = Mat(m_current_frame.rows,m_current_frame.cols,CV_8UC1);
     }
 
-
-
-    getTimeCost();
-
 #pragma omp parallel num_threads(THNUM)
     {
-        Mat inp(features_num,1,CV_64F);
+        Mat inpx(TRANSFORM_NUM,1,CV_64F),inpy(TRANSFORM_NUM,1,CV_64F);;
         int thr_id=omp_get_thread_num(); // get thread id
         int mini=m_delta_frame.rows/THNUM*thr_id;
         int maxi=mini+m_delta_frame.rows/THNUM;
@@ -199,20 +218,190 @@ void MyAlgorithm::doTransform()
         {
             for(size_t j=0;j<m_delta_frame.cols;j++)
             {
-                inp.at<double>(0,0)=j;//x,cols
-                inp.at<double>(1,0)=i;//y,rows
-                inp.at<double>(2,0)=1;
-                inp.at<double>(3,0)=j*i;
-                //                Mat trans = m_lt_manager.getTransformMat();
-                //                output_p = trans*inp;
-                output_p = m_lt_manager.getOutputFromTransform(inp);
+                inpy.at<double>(0,0)=inpx.at<double>(0,0)=j;//x,cols
+                inpy.at<double>(1,0)=inpx.at<double>(1,0)=i;//y,rows
+                inpy.at<double>(2,0)=inpx.at<double>(2,0)=1;
+                if(TRANSFORM_NUM == 3)
+                {
+
+                }
+                else if(TRANSFORM_NUM == 4)
+                {
+                    inpy.at<double>(3,0)=inpx.at<double>(3,0)=j*i;
+                }
+                else if(TRANSFORM_NUM ==5)
+                {
+                    inpx.at<double>(3,0)=j*j;
+                    inpx.at<double>(4,0)=j*i;
+
+                    inpy.at<double>(3,0)=i*i;
+                    inpy.at<double>(4,0)=j*i;
+                }
+                else if(TRANSFORM_NUM == 6)
+                {
+                    inpy.at<double>(3,0)=inpx.at<double>(3,0)=j*j;
+                    inpy.at<double>(4,0)=inpx.at<double>(4,0)=i*i;
+                    inpy.at<double>(5,0)=inpx.at<double>(5,0)=j*i;
+                }
+
+                output_p = m_lt_manager.getOutputFromTransform(inpx,true); // output x
                 a[0]=output_p.at<double>(0,0);//x,cols
                 a[0]=min(a[0],m_delta_frame.cols-1);
                 a[0]=max(a[0],0);
-                a[1]=output_p.at<double>(1,0);//y,rows
+
+                output_p = m_lt_manager.getOutputFromTransform(inpy,false); // output y
+                a[1]=output_p.at<double>(0,0);//y,rows
                 a[1]=min(a[1],m_delta_frame.rows-1);
-                a[1]=max(a[1],1);
-                //            cout<<"Time Tra3: "<< getTimeCost()<<"\n";
+                a[1]=max(a[1],0);
+
+
+//                a[0]=j;
+//                a[1]=i;
+                if(a[0]==0||a[0]==m_delta_frame.cols-1
+                        ||a[1]==0||a[1]==m_delta_frame.rows-1)
+                {
+                    if(c_display_chromatic_delta)
+                    {
+
+                        m_delta_frame.at<Vec3b>(i,j)=Vec3b(0,0,0) ;
+                    }
+                    else
+                    {
+                        m_delta_frame.at<uchar>(i,j)=0 ;
+                    }
+                }
+                else
+                {
+                    Vec3b p1= m_current_frame.at<Vec3b>(i,j);
+                    Vec3b p2= m_prev_frame.at<Vec3b>(a[1],a[0]);
+                    Vec3b dd;
+                    int hehe=0;
+                    for(int k=0;k<3;k++)
+                    {
+                        dd[k]=(p1[k]>p2[k])?(p1[k]-p2[k]):(p2[k]-p1[k]);
+                        hehe=max(hehe,(int)dd[k]);
+                    }
+                    if(c_display_chromatic_delta)
+                    {
+                        m_delta_frame.at<Vec3b>(i,j)=dd;
+                    }
+                    else
+                    {
+                        m_delta_frame.at<uchar>(i,j)=hehe;
+                    }
+
+                }
+            }
+        }
+    }
+    time_log<<getTimeCost()<<" ";
+}
+void MyAlgorithm::doTransform(int fnum)
+{
+    /// get transform matrix
+    Mat input_x(m_cur_klt_points.size(),fnum,CV_64F);
+    Mat input_y(m_cur_klt_points.size(),fnum,CV_64F);
+    Mat output_x(1,m_pre_klt_points.size(),CV_64F);
+    Mat output_y(1,m_pre_klt_points.size(),CV_64F);
+    for(size_t t=0;t<m_pre_klt_points.size();t++)
+    {
+
+        input_y.at<double>(t,0) = input_x.at<double>(t,0) = m_cur_klt_points.at(t).x;
+        input_y.at<double>(t,1) = input_x.at<double>(t,1) = m_cur_klt_points.at(t).y;
+        input_y.at<double>(t,2) = input_x.at<double>(t,2) = 1;
+        if(fnum==3)
+        {
+
+        }
+        else if(fnum == 4)
+        {
+            input_y.at<double>(t,3) = input_x.at<double>(t,3) = m_cur_klt_points.at(t).x*m_cur_klt_points.at(t).y;
+        }
+        else if(fnum == 5)
+        {
+            input_x.at<double>(t,3) = m_cur_klt_points.at(t).x*m_cur_klt_points.at(t).x;
+            input_x.at<double>(t,4) = m_cur_klt_points.at(t).x*m_cur_klt_points.at(t).y;
+
+            input_y.at<double>(t,3) = m_cur_klt_points.at(t).y*m_cur_klt_points.at(t).y;
+            input_y.at<double>(t,4) = m_cur_klt_points.at(t).x*m_cur_klt_points.at(t).y;
+
+        }
+        else if(fnum == 6)
+        {
+            input_y.at<double>(t,3) =input_x.at<double>(t,3) = m_cur_klt_points.at(t).x*m_cur_klt_points.at(t).x;
+            input_y.at<double>(t,4) =input_x.at<double>(t,4) = m_cur_klt_points.at(t).y*m_cur_klt_points.at(t).y;
+            input_y.at<double>(t,5) =input_x.at<double>(t,5) = m_cur_klt_points.at(t).x*m_cur_klt_points.at(t).y;
+        }
+        output_x.at<double>(0,t) = m_pre_klt_points.at(t).x;
+        output_y.at<double>(0,t) = m_pre_klt_points.at(t).y;
+    }
+    m_lt_manager.setTransformInfo(input_x,input_y,output_x,output_y);
+    m_lt_manager.solveTransform();
+
+    /// get delta frame
+    if(c_display_chromatic_delta)
+    {
+        m_delta_frame = Mat(m_current_frame.rows,m_current_frame.cols,CV_8UC3);
+    }
+    else
+    {
+        m_delta_frame = Mat(m_current_frame.rows,m_current_frame.cols,CV_8UC1);
+    }
+
+#pragma omp parallel num_threads(THNUM)
+    {
+        Mat inpx(fnum,1,CV_64F),inpy(fnum,1,CV_64F);;
+        int thr_id=omp_get_thread_num(); // get thread id
+        int mini=m_delta_frame.rows/THNUM*thr_id;
+        int maxi=mini+m_delta_frame.rows/THNUM;
+        if(thr_id == THNUM-1)
+        {
+            maxi=std::max(m_delta_frame.rows,maxi);
+        }
+
+        Mat output_p;
+        int a[2];
+
+        for(size_t i=mini;i<maxi;i++)
+        {
+            for(size_t j=0;j<m_delta_frame.cols;j++)
+            {
+                inpy.at<double>(0,0)=inpx.at<double>(0,0)=j;//x,cols
+                inpy.at<double>(1,0)=inpx.at<double>(1,0)=i;//y,rows
+                inpy.at<double>(2,0)=inpx.at<double>(2,0)=1;
+                if(fnum == 3)
+                {
+
+                }
+                else if(fnum == 4)
+                {
+                    inpy.at<double>(3,0)=inpx.at<double>(3,0)=j*i;
+                }
+                else if(fnum ==5)
+                {
+                    inpx.at<double>(3,0)=j*j;
+                    inpx.at<double>(4,0)=j*i;
+
+                    inpy.at<double>(3,0)=i*i;
+                    inpy.at<double>(4,0)=j*i;
+                }
+                else if(fnum == 6)
+                {
+                    inpy.at<double>(3,0)=inpx.at<double>(3,0)=j*j;
+                    inpy.at<double>(4,0)=inpx.at<double>(4,0)=i*i;
+                    inpy.at<double>(5,0)=inpx.at<double>(5,0)=j*i;
+                }
+
+                output_p = m_lt_manager.getOutputFromTransform(inpx,true); // output x
+                a[0]=output_p.at<double>(0,0);//x,cols
+                a[0]=min(a[0],m_delta_frame.cols-1);
+                a[0]=max(a[0],0);
+
+                output_p = m_lt_manager.getOutputFromTransform(inpy,false); // output y
+                a[1]=output_p.at<double>(0,0);//y,rows
+                a[1]=min(a[1],m_delta_frame.rows-1);
+                a[1]=max(a[1],0);
+
 
                 if(a[0]==0||a[0]==m_delta_frame.cols-1
                         ||a[1]==0||a[1]==m_delta_frame.rows-1)
@@ -251,26 +440,12 @@ void MyAlgorithm::doTransform()
             }
         }
     }
-
-    for( size_t i=0;i<pre_klt_points.size();i++)
-    {
-        line(m_prev_frame,pre_klt_points[i],cur_klt_points[i],Scalar(255,255,255),1,8,0);
-    }
-
 }
-
 
 void MyAlgorithm::doPF()
 {
     m_particle_filter.setDiffFrame(m_delta_frame);
     m_particle_filter.doFiltering();
-    vector<Particles> pv = m_particle_filter.getParticles();
-    for(size_t i=0;i<pv.size();i++)
-    {
-        rectangle(m_prev_frame,
-                  Point(std::max(pv.at(i).m_col-2,0.0),std::max(pv.at(i).m_row-2,0.0)),
-                  Point(pv.at(i).m_col,pv.at(i).m_row),Scalar(255,0,0));
-    }
 }
 
 void MyAlgorithm::doClustering()
@@ -289,78 +464,152 @@ void MyAlgorithm::doClustering()
 
     int cernter_num = 5;
     KMfilterCenters ctrs(cernter_num, m_km_dataPts);		// allocate centers
-    KMterm	term(1000, 0, 0, 0,		// run for 100 stages
+    KMcenterArray center_array = ctrs.getCtrPts();          // init center points
+    //    if(m_mid_p.size()>0)
+    //    {
+    //        for(size_t i=0;i<cernter_num;i++)
+    //        {
+    //            center_array[i][0]=m_mid_p.at(0).x;
+    //            center_array[i][1]=m_mid_p.at(0).y;
+    //        }
+    //    }
+
+
+    KMterm	term(1000, 0, 0, 0,		// run for 1000 stages
                  0.10,			// min consec RDL
                  0.10,			// min accum RDL
-                 3,			// max run stages
+                 200,			// max run stages
                  0.50,			// init. prob. of acceptance
                  10,			// temp. run length
                  0.95);			// temp. reduction factor
 
     // run the algorithms
-    //    cout << "\nExecuting Clustering Algorithm: Lloyd's\n";
     KMlocalLloyds kmLloyds(ctrs, term);		// repeated Lloyd's
     ctrs = kmLloyds.execute();			// execute
 
     // get centers & errors
-    Point mid;
+    m_mid_p.clear();
+    m_std_error.clear();
+    m_min_std_error = DBL_MAX;
+
     double* dist = ctrs.getDists();
     int* weights = ctrs.getWeights();
-    KMcenterArray center_array = ctrs.getCtrPts();
-    int min_std_error_id=0;
-    double min_std_error = DBL_MAX;
     double std_error_temp;
     for(size_t i=0;i<cernter_num;i++)
     {
-        //        cout<<center_array[i][0]<<" "<<center_array[i][1]<<" "<<weights[i]<<" "<<std::sqrt(dist[i]/weights[i])<<endl;
+        m_mid_p.push_back(Point2f(center_array[i][0],center_array[i][1]));
         std_error_temp = std::sqrt(dist[i]/weights[i]);
-        if(std_error_temp<min_std_error)
+        m_std_error.push_back(std_error_temp);
+        if(std_error_temp<m_min_std_error)
         {
-            min_std_error = std_error_temp;
-            min_std_error_id = i;
+            m_min_std_error = std_error_temp;
+            m_min_mid_p = Point2f(center_array[i][0],center_array[i][1]);
         }
-        mid = Point(center_array[i][0],center_array[i][1]);
-//        circle(m_prev_frame,mid,std_error_temp,Scalar(255,255,0),2);
     }
-
-    //    cout<<min_std_error<<endl;
-    if(min_std_error>30)
-    {
-        return;
-    }
-    mid = Point(center_array[min_std_error_id][0],center_array[min_std_error_id][1]);
-    //    cout<<mid<<endl;
-        cout<<min_std_error<<endl;
-    circle(m_prev_frame,mid,min_std_error,Scalar(255,255,0),3);
 }
-
+void MyAlgorithm::sumDeltaFrame()
+{
+    int row = m_delta_frame.rows;
+    int col = m_delta_frame.cols;
+    long sum=0;
+    for(int i=0;i<row;i++)
+    {
+        for(int j=0;j<col;j++)
+        {
+            sum+=m_delta_frame.at<uchar>(i,j);
+        }
+    }
+    delta_frame_log<<sum<<" ";
+}
 
 
 void MyAlgorithm::processNextFrame()
 {
     getTimeCost();
 
-    if(m_video_ptr==NULL)
+
+
+    if(mode==1)
     {
-        cout<<"No Video Input !!!"<<endl;
-    }
 
-    /// get next frame as current frame
-    if( !m_video_ptr->read(m_current_frame))//||!m_video_ptr->read(m_current_frame))
+        m_prev_frame = m_current_frame.clone();
+        if(m_video_ptr==NULL)
+        {
+            cout<<"No Video Input !!!"<<endl;
+        }
+        /// get next frame as current frame
+        if( !m_video_ptr->read(m_current_frame))//||!m_video_ptr->read(m_current_frame))
+        {
+            std::cout<<"Error in video show !!!"<<std::endl;
+            return;
+        }
+        if(c_use_prydown)
+        {
+            pyrDown(m_current_frame,m_current_frame,Size(m_current_frame.cols/2,m_current_frame.rows/2));
+            if(c_down_twice)
+            {
+                pyrDown(m_current_frame,m_current_frame,Size(m_current_frame.cols/2,m_current_frame.rows/2));
+            }
+            m_klt_detector.setCurrentFrame(m_current_frame);
+        }
+        else
+        {
+            cv::resize(m_current_frame,m_raw_frame,frame_size,resize_scale,resize_scale,INTER_LINEAR );
+            if(c_down_twice)
+            {
+                GaussianBlur(m_current_frame,m_current_frame,Size(gauss_kernel_size,gauss_kernel_size),10);
+                cv::resize(m_current_frame,m_current_frame,frame_size,resize_scale,resize_scale,INTER_LINEAR );
+            }
+            if(use_gauss)
+            {
+                GaussianBlur(m_raw_frame,m_current_frame,Size(gauss_kernel_size,gauss_kernel_size),gauss_sigma);
+            }
+            else
+            {
+                m_current_frame = m_raw_frame;
+            }
+            m_klt_detector.setCurrentFrame(m_raw_frame);
+        }
+
+
+
+        time_log<<cycle++<<" ";
+        doKLT();
+        //    cout<<"Time KLT: "<< getTimeCost()<<"\n";
+        doTransform();
+        //    cout<<"Time Tra: "<< getTimeCost()<<"\n";
+        doPF();
+        time_log<<getTimeCost()<<" ";
+        //    cout<<"Time PF : "<< getTimeCost()<<"\n";
+        doClustering();
+        time_log<<getTimeCost()<<" ";
+        //    cout<<"Time Clu: "<< getTimeCost()<<"\n"<<endl;
+        time_log<<endl;
+    }
+    else if(mode == 2)
     {
-        std::cout<<"Error in video show !!!"<<std::endl;
-        return;
+        for(int i=0;i<300;i++)
+        {
+            if(m_video_ptr==NULL)
+            {
+                cout<<"No Video Input !!!"<<endl;
+            }
+            /// get next frame as current frame
+            if( !m_video_ptr->read(m_current_frame))//||!m_video_ptr->read(m_current_frame))
+            {
+                std::cout<<"Error in video show !!!"<<std::endl;
+                return;
+            }
+            delta_frame_log<<cycle++<<" ";
+            doKLT();
+            for(int i=3;i<=6;i++)
+            {
+                doTransform(i);
+                sumDeltaFrame();
+            }
+            delta_frame_log<<m_pre_klt_points.size()<<endl;
+        }
     }
-
-
-    doKLT();
-    cout<<"Time KLT: "<< getTimeCost()<<"\n";
-    doTransform();
-    cout<<"Time Tra: "<< getTimeCost()<<"\n";
-    doPF();
-    cout<<"Time PF : "<< getTimeCost()<<"\n";
-    doClustering();
-    cout<<"Time Clu: "<< getTimeCost()<<"\n"<<endl;
 }
 
 
@@ -381,16 +630,16 @@ void KLTDetector::setCurrentFrame(Mat frame)
     }
     else
     {
-//        getTimeCost();
+        //        getTimeCost();
         m_prev_frame = m_current_frame.clone();
         m_current_frame = frame;
-//        cout<<"KLT 11: "<<getTimeCost()<<endl;
+        //        cout<<"KLT 11: "<<getTimeCost()<<endl;
         swap(m_prev_frame_gray_gpu,m_current_frame_gray_gpu);
         swap(m_prev_frame_gpu,m_current_frame_gpu);
         m_current_frame_gpu = gpu::GpuMat(frame);
-//        cout<<"KLT 12: "<<getTimeCost()<<endl;
+        //        cout<<"KLT 12: "<<getTimeCost()<<endl;
         cvtColor(m_current_frame_gpu,m_current_frame_gray_gpu,CV_BGR2GRAY);
-//        cout<<"KLT 13: "<<getTimeCost()<<endl;
+        //        cout<<"KLT 13: "<<getTimeCost()<<endl;
     }
 }
 void KLTDetector::doTrackingKLT()
@@ -399,9 +648,11 @@ void KLTDetector::doTrackingKLT()
     vector<Point2f> cur_points;
     if(!USE_CUDA)
     {
+        // get good feature points
         m_pre_klt_points = get_KLT_features(m_prev_frame_gray,feature_points_num);
+        time_log<<getTimeCost()<<" ";
 
-        // get motion line
+        // get optical flow
         std::vector<unsigned char> features_status;
         std::vector<float> features_error;
         Size search_window(21,21);
@@ -411,7 +662,7 @@ void KLTDetector::doTrackingKLT()
                              search_window, pyr_level,
                              TermCriteria(TermCriteria::COUNT+TermCriteria::EPS, 30, 0.01),
                              OPTFLOW_LK_GET_MIN_EIGENVALS,1e-4);
-        //        std::vector<Point2f> prev_points,cur_points;
+
         for( size_t i=0;i<m_pre_klt_points.size();i++)
         {
             if( !features_status[i] || features_error[i]>50 )
@@ -423,16 +674,18 @@ void KLTDetector::doTrackingKLT()
         }
         m_pre_klt_points = prev_points;
         m_cur_klt_points = cur_points;
+        time_log<<getTimeCost()<<" ";
     }
     else
     {
         //detect first
         double minDistBetweenPoints = 0;
-        double minLevel = 0.05;
+        double minLevel = 0.07;
         gpu::GoodFeaturesToTrackDetector_GPU detector(feature_points_num, minLevel, minDistBetweenPoints);
         gpu::GpuMat prevP,newP,status,error;
         detector(m_prev_frame_gray_gpu,prevP);
         cout<<"start prevP: "<<prevP.cols<<endl;
+        time_log<<getTimeCost()<<" ";
 
         // get flow in gpumat
         gpu::PyrLKOpticalFlow d_pyrLK;
@@ -472,6 +725,7 @@ void KLTDetector::doTrackingKLT()
             m_cur_klt_points.push_back(cur_points.at(i));
         }
         cout<<"end newP: "<<m_pre_klt_points.size()<<endl;
+        time_log<<getTimeCost()<<" ";
 
     }
 }
@@ -517,11 +771,11 @@ std::vector<Point2f> KLTDetector::get_KLT_features(Mat image,int maxCorners)
     //    std::cout<<"** Number of corners detected: "<<corners.size()<<std::endl;
     return corners;
 }
-std::vector<cv::Point2f> KLTDetector::getPreKLTPoints()
+const std::vector<cv::Point2f>& KLTDetector::getPreKLTPoints()
 {
     return m_pre_klt_points;
 }
-std::vector<cv::Point2f> KLTDetector::getCurKLTPoints()
+const std::vector<cv::Point2f>& KLTDetector::getCurKLTPoints()
 {
     return m_cur_klt_points;
 }
@@ -534,10 +788,6 @@ cv::Mat KLTDetector::getPreFrame()
     else
     {
         return m_prev_frame;
-//        Mat retv;
-//        m_prev_frame_gray_gpu.download(retv);
-//        retv.convertTo(retv,CV_8UC1,);
-//        return Mat(m_prev_frame_gray_gpu);
     }
 
 }
@@ -555,48 +805,63 @@ LinearTransformManager::LinearTransformManager()
 {
 
 }
-void LinearTransformManager::setTransformInfo(cv::Mat input_vec,cv::Mat output_vec)
+void LinearTransformManager::setTransformInfo(cv::Mat input_vec_x,cv::Mat input_vec_y,cv::Mat output_vec_x,cv::Mat output_vec_y)
 {
-    m_input_vec = input_vec;
-    m_output_vec = output_vec;
+    m_input_vec_x = input_vec_x;
+    m_input_vec_y = input_vec_y;
+    m_output_vec_x = output_vec_x;
+    m_output_vec_y = output_vec_y;
 }
 void LinearTransformManager::solveTransform()
 {
-    Mat result;
-    result = (m_input_vec.t()*m_input_vec).inv(DECOMP_CHOLESKY)*m_input_vec.t()*m_output_vec.t(); //m * k
-    m_transform_mat = result.t();// k*m
+    Mat result_x;
+    result_x = (m_input_vec_x.t()*m_input_vec_x).inv(DECOMP_CHOLESKY)*m_input_vec_x.t()*m_output_vec_x.t(); //m * k
+    m_transform_mat_x = result_x.t();// k*m
 
+    Mat result_y;
+    result_y = (m_input_vec_y.t()*m_input_vec_y).inv(DECOMP_CHOLESKY)*m_input_vec_y.t()*m_output_vec_y.t(); //m * k
+    m_transform_mat_y = result_y.t();// k*m
 
     // calc for the second time
-    Mat newinput,newoutput;
-    Mat outt=m_output_vec.t();
-    Mat checkoutput = m_transform_mat*m_input_vec.t();
-    checkoutput -= m_output_vec;
-    int si = m_input_vec.rows;
+    Mat newinput_x,newoutput_x,newinput_y,newoutput_y;
+    Mat deltax,deltay;
+    deltax = m_output_vec_x-m_transform_mat_x*m_input_vec_x.t();
+    deltay = m_output_vec_y-m_transform_mat_y*m_input_vec_y.t();
+    Mat outxt=m_output_vec_x.t();
+    Mat outyt=m_output_vec_y.t();
+    //    Mat checkoutput = m_transform_mat_x*m_input_vec_x.t();
+    //    checkoutput -= m_output_vec;
+    int si = m_input_vec_x.rows;
     for(int k=0;k<si;k++)
     {
-        if(checkoutput.col(k).dot(checkoutput.col(k))<5)
+        if((deltax.at<double>(0,k)*deltax.at<double>(0,k)+deltay.at<double>(0,k)*deltay.at<double>(0,k)) <5)
         {
-            newinput.push_back(m_input_vec.row(k));
-            newoutput.push_back(outt.row(k));
+            newinput_x.push_back(m_input_vec_x.row(k));
+            newinput_y.push_back(m_input_vec_y.row(k));
+            newoutput_x.push_back(outxt.row(k));
+            newoutput_y.push_back(outyt.row(k));
         }
     }
 
     //    cout<<"After selection: "<<newinput.rows<<endl;
-    if(!newinput.rows)
+    if(!newinput_x.rows)
     {
         return;
     }
-    m_input_vec = newinput;
-    m_output_vec = newoutput.t();
+    m_input_vec_x = newinput_x;
+    m_output_vec_x = newoutput_x.t();
+    m_input_vec_y = newinput_y;
+    m_output_vec_y = newoutput_y.t();
 
-    result = (m_input_vec.t()*m_input_vec).inv(DECOMP_CHOLESKY)*m_input_vec.t()*m_output_vec.t(); //m * k
-    m_transform_mat = result.t();// k*m
+    result_x = (m_input_vec_x.t()*m_input_vec_x).inv(DECOMP_CHOLESKY)*m_input_vec_x.t()*m_output_vec_x.t(); //m * k
+    result_y = (m_input_vec_y.t()*m_input_vec_y).inv(DECOMP_CHOLESKY)*m_input_vec_y.t()*m_output_vec_y.t(); //m * k
+    m_transform_mat_x = result_x.t();// k*m
+    m_transform_mat_y = result_y.t();// k*m
 
 }
 Mat LinearTransformManager::getTransformMat()
 {
-    return m_transform_mat;
+    return m_transform_mat_x;
 }
 
 
